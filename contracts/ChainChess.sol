@@ -2,7 +2,7 @@ pragma solidity ^0.6.0;
 
 contract ChainChess {
     uint8 constant MAX_GAMES_PER_USER = 6;
-    
+
     PieceType[8][8] default2dPieceLayout = [
         [PieceType.Rook,PieceType.Knight,PieceType.Bishop,PieceType.Queen,PieceType.King,PieceType.Bishop,PieceType.Knight,PieceType.Rook],
         [PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn],
@@ -13,6 +13,7 @@ contract ChainChess {
         [PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn],
         [PieceType.Rook,PieceType.Knight,PieceType.Bishop,PieceType.Queen,PieceType.King,PieceType.Bishop,PieceType.Knight,PieceType.Rook]
     ];
+
     PlayerSide[8] defaultRankOwnership = [
         PlayerSide.White,
         PlayerSide.White,
@@ -41,7 +42,6 @@ contract ChainChess {
     }
 
     struct Player {
-        address playerAddress;
         PlayerSide side;
         uint8 kingRankPos;
         uint8 kingFilePos;
@@ -54,28 +54,24 @@ contract ChainChess {
 
     struct Board {
         BoardSquare[8][8] squares;
+        mapping(uint8 => address) playerSides;
+        mapping(address => Player) players;
         Piece[] eliminatedPieces;
-        Player player1;
-        Player player2;
         PlayerSide inCheck;
     }
 
     struct Game {
-        uint gameId;
         Board board;
+        uint gameId;
         PlayerSide currentTurn;
         bool started;
         bool ended;
         address winner;
     }
 
-    modifier verifySenderIsEither(address address1, address address2) {
-        require(msg.sender == address1 || msg.sender == address2, "User is not a part of this game");
-        _;
-    }
-
-    modifier gameExists(uint gameId) {
-        require(games[gameId].board.player1.playerAddress != address(0), "Game does not exist");
+    modifier verifyMoveForGame(uint gameId) {
+        require(games[gameId].started, "Game does not exist.");
+        require(games[gameId].board.players[msg.sender].side != PlayerSide.None, "User is not a part of this game.");
         _;
     }
 
@@ -106,7 +102,7 @@ contract ChainChess {
 
         Game storage newGame = games[gameCount];
 
-        createGame(gameCount, msg.sender, otherPlayer, newGame);
+        initializeGame(gameCount, msg.sender, otherPlayer, newGame);
 
         gameCount++;
         
@@ -117,12 +113,10 @@ contract ChainChess {
         player2Games.push(newGame);
     }
 
-    function movePiece(uint gameId, uint8 prevRankPos, uint8 prevFilePos, uint8 newRankPos, uint8 newFilePos) public 
-    gameExists(gameId)
-    verifySenderIsEither(games[gameId].board.player1.playerAddress, games[gameId].board.player2.playerAddress) returns (bool) {
+    function movePiece(uint gameId, uint8 prevRankPos, uint8 prevFilePos, uint8 newRankPos, uint8 newFilePos) public verifyMoveForGame(gameId) returns (bool) {
         Game storage game = games[gameId];
-        Player memory currentPlayer = getCurrentPlayer(game.board);
-        Player memory otherPlayer = getOtherPlayer(game.board);
+        Player storage currentPlayer = game.board.players[msg.sender];
+        Player storage otherPlayer = game.board.players[game.board.playerSides[uint8(getOtherSide(currentPlayer.side))]];
         BoardSquare storage selectedSquare = game.board.squares[prevRankPos][prevFilePos];
         BoardSquare storage squareToMoveTo = game.board.squares[newRankPos][newFilePos];
 
@@ -132,7 +126,7 @@ contract ChainChess {
 
         // If a piece was eliminated, add it to the eliminatedPieces array
         if(squareToMoveTo.isOccupied) {
-            game.board.eliminatedPieces.push(squareToMoveTo.piece);
+            game.board.eliminatedPieces.push(clonePiece(squareToMoveTo.piece));
         }
 
         // Remove piece from previous location...
@@ -148,7 +142,7 @@ contract ChainChess {
 
         // If this move does not take the players king out of check, then revert this move
         if(game.board.inCheck == currentPlayer.side) {
-            (bool inCheck,) = getKingState(game, currentPlayer);
+            (bool inCheck,) = checkKingState(game, currentPlayer);
 
             if(inCheck) {
                 revert("Player is in check. Must protect king");
@@ -156,7 +150,7 @@ contract ChainChess {
         }
 
         // Check if the game is done
-        (bool inCheck, bool checkMated) = getKingState(game, otherPlayer);
+        (bool inCheck, bool checkMated) = checkKingState(game, otherPlayer);
 
         if(checkMated) {
             game.ended = true;
@@ -166,51 +160,50 @@ contract ChainChess {
                 game.board.inCheck = otherPlayer.side;
             }
 
-            // Update king location if need be
             if(selectedSquare.piece.pieceType == PieceType.King) {
                 currentPlayer.kingRankPos = newRankPos;
                 currentPlayer.kingFilePos = newFilePos;
             }
 
-            // Update player turn
             game.currentTurn = otherPlayer.side;
         }
 
         return true;
     }
 
-    function createGame(uint gameId, address player1Address, address player2Address, Game storage newGame) internal {
+    function clonePiece(Piece memory piece) pure internal returns (Piece memory) {
+        return Piece({owner: piece.owner, pieceType: piece.pieceType, side: piece.side, hasMadeInitialMove: piece.hasMadeInitialMove});
+    }
+
+    function initializeGame(uint gameId, address player1Address, address player2Address, Game storage newGame) internal {
+        Board storage board = newGame.board;
+        board.playerSides[uint8(PlayerSide.White)] = player1Address;
+        board.playerSides[uint8(PlayerSide.Black)] = player2Address;
+
         //First coordinate represents 1 - 8 ranks (rows), second represents a - h files (columns)
         for(uint8 rank_iter = 0; rank_iter <= 7; rank_iter++) {
             for(uint8 file_iter = 0; file_iter <= 7; file_iter++) {
                 if(defaultRankOwnership[rank_iter] != PlayerSide.None) {
-                    newGame.board.squares[rank_iter][file_iter].isOccupied = true;
-                    newGame.board.squares[rank_iter][file_iter].piece.owner = defaultRankOwnership[rank_iter] == PlayerSide.White ? player1Address : player2Address;
-                    newGame.board.squares[rank_iter][file_iter].piece.pieceType = default2dPieceLayout[rank_iter][file_iter];
-                    newGame.board.squares[rank_iter][file_iter].piece.side = defaultRankOwnership[rank_iter];
-                    newGame.board.squares[rank_iter][file_iter].piece.hasMadeInitialMove = false;
+                    board.squares[rank_iter][file_iter].isOccupied = true;
+                    board.squares[rank_iter][file_iter].piece.owner = defaultRankOwnership[rank_iter] == PlayerSide.White ? player1Address : player2Address;
+                    board.squares[rank_iter][file_iter].piece.pieceType = default2dPieceLayout[rank_iter][file_iter];
+                    board.squares[rank_iter][file_iter].piece.side = defaultRankOwnership[rank_iter];
+                    board.squares[rank_iter][file_iter].piece.hasMadeInitialMove = false;
 
-                    if(newGame.board.squares[rank_iter][file_iter].piece.pieceType == PieceType.King) {
-                        if(defaultRankOwnership[rank_iter] == PlayerSide.White) {
-                            newGame.board.player1.playerAddress = player1Address;
-                            newGame.board.player1.side = defaultRankOwnership[rank_iter];
-                            newGame.board.player1.kingRankPos = rank_iter;
-                            newGame.board.player1.kingFilePos = file_iter;
-                        } else if (defaultRankOwnership[rank_iter] == PlayerSide.Black) {
-                            newGame.board.player2.playerAddress = player2Address;
-                            newGame.board.player2.side = defaultRankOwnership[rank_iter];
-                            newGame.board.player2.kingRankPos = rank_iter;
-                            newGame.board.player2.kingFilePos = file_iter;
-                        }
+                    if(board.squares[rank_iter][file_iter].piece.pieceType == PieceType.King) {
+                        Player storage currentPlayer = newGame.board.players[newGame.board.playerSides[uint8(defaultRankOwnership[rank_iter])]];
+                        currentPlayer.side = defaultRankOwnership[rank_iter];
+                        currentPlayer.kingRankPos = rank_iter;
+                        currentPlayer.kingFilePos = file_iter;
                     }
                 }
             }
         }
 
         newGame.gameId = gameId;
+        newGame.currentTurn = PlayerSide.White;
         newGame.started = true;
         newGame.ended = false;
-        newGame.currentTurn = PlayerSide.White;
         newGame.winner = address(0);
     }
 
@@ -225,7 +218,7 @@ contract ChainChess {
         [int8(0),-1]
     ];
 
-    function getKingState(Game memory game, Player memory player) view internal returns(bool, bool) {
+    function checkKingState(Game memory game, Player memory player) view internal returns(bool, bool) {
         uint8 rankPos;
         uint8 filePos;
         
@@ -255,7 +248,7 @@ contract ChainChess {
 
         if(piece.pieceType == PieceType.Pawn) {
             return isValidPawnMove(prevRankPos, prevFilePos, newRankPos, newFilePos, piece, board);
-        } else if (piece.pieceType == PieceType.Knight) {
+        } else if (piece.pieceType == PieceType.Knight) { 
             return isValidKnightMove(prevRankPos, prevFilePos, newRankPos, newFilePos);
         } else if (piece.pieceType == PieceType.Bishop) {
             return isValidDiagonalMove(prevRankPos, prevFilePos, newRankPos, newFilePos, true);
@@ -323,6 +316,27 @@ contract ChainChess {
         if(isValidAxialMove(prevRankPos, prevFilePos, newRankPos, newFilePos, false) || isValidDiagonalMove(prevRankPos, prevFilePos, newRankPos, newFilePos, false)) {
             return !positionIsThreatened(newRankPos, newFilePos, board, piece.side);
         }
+    }
+
+    function positionIsThreatened(uint8 rankPos, uint8 filePos, Board memory board, PlayerSide side) view internal returns(bool) {
+        //Check below ranks, same file
+        if(axialIsThreatened(rankPos, filePos, board, side, true, false)) return true;
+        //Check above ranks, same file
+        if(axialIsThreatened(rankPos, filePos, board, side, true, true)) return true;
+        //Check below files, same rank
+        if(axialIsThreatened(rankPos, filePos, board, side, false, false)) return true;
+        //Check above files, same rank
+        if(axialIsThreatened(rankPos, filePos, board, side, false, true)) return true;
+        //Check backwardLeft diagonal
+        if(diagonalIsThreatened(rankPos, filePos, board, side, false, false, side == PlayerSide.Black ? true : false)) return true;
+        //Check backwardRight diagonal
+        if(diagonalIsThreatened(rankPos, filePos, board, side, false, true, side == PlayerSide.Black ? true : false)) return true;
+        //Check forwardRight diagonal
+        if(diagonalIsThreatened(rankPos, filePos, board, side, true, true, side == PlayerSide.White ? true : false)) return true;
+        //Check forwardLeft diagonal
+        if(diagonalIsThreatened(rankPos, filePos, board, side, true, false, side == PlayerSide.White ? true : false)) return true;
+        //Check for threatening knight
+        if(knightThreatensPosition(rankPos, filePos, board, side)) return true;
     }
 
     function axialIsThreatened(uint8 rankPos, uint8 filePos, Board memory board, PlayerSide side, bool iteration_dimension, bool iteration_direction) pure internal returns(bool) {
@@ -400,27 +414,6 @@ contract ChainChess {
         return false;
     }
 
-    function positionIsThreatened(uint8 rankPos, uint8 filePos, Board memory board, PlayerSide side) view internal returns(bool) {
-        //Check below ranks, same file
-        if(axialIsThreatened(rankPos, filePos, board, side, true, false)) return true;
-        //Check above ranks, same file
-        if(axialIsThreatened(rankPos, filePos, board, side, true, true)) return true;
-        //Check below files, same rank
-        if(axialIsThreatened(rankPos, filePos, board, side, false, false)) return true;
-        //Check above files, same rank
-        if(axialIsThreatened(rankPos, filePos, board, side, false, true)) return true;
-        //Check backwardLeft diagonal
-        if(diagonalIsThreatened(rankPos, filePos, board, side, false, false, side == PlayerSide.Black ? true : false)) return true;
-        //Check backwardRight diagonal
-        if(diagonalIsThreatened(rankPos, filePos, board, side, false, true, side == PlayerSide.Black ? true : false)) return true;
-        //Check forwardRight diagonal
-        if(diagonalIsThreatened(rankPos, filePos, board, side, true, true, side == PlayerSide.White ? true : false)) return true;
-        //Check forwardLeft diagonal
-        if(diagonalIsThreatened(rankPos, filePos, board, side, true, false, side == PlayerSide.White ? true : false)) return true;
-        //Check for threatening knight
-        if(knightThreatensPosition(rankPos, filePos, board, side)) return true;
-    }
-
     function getPositionDiff(uint8 prevRankPos, uint8 prevFilePos, uint8 newRankPos, uint8 newFilePos) pure internal returns (uint8 rankPosDiff, uint8 filePosDiff) {
         if(prevRankPos > newRankPos) {
             rankPosDiff = prevRankPos - newRankPos;
@@ -439,11 +432,9 @@ contract ChainChess {
         }
     }
 
-    function getCurrentPlayer(Board memory board) view internal returns(Player memory) {
-        return board.player1.playerAddress == msg.sender ? board.player1 : board.player2;
-    }
-
-    function getOtherPlayer(Board memory board) view internal returns(Player memory) {
-        return board.player1.playerAddress == msg.sender ? board.player2 : board.player1;
+    function getOtherSide(PlayerSide playerSide) pure internal returns(PlayerSide) {
+        if(playerSide == PlayerSide.White) return PlayerSide.Black;
+        else if(playerSide == PlayerSide.Black) return PlayerSide.Black;
+        else return PlayerSide.None;
     }
 }
