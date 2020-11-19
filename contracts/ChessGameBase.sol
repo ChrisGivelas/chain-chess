@@ -1,6 +1,6 @@
 pragma solidity ^0.6.0;
 
-contract ChainChessBase {
+contract ChessGameBase {
     PieceType[8][8] default2dPieceLayout = [
         [PieceType.Rook,PieceType.Knight,PieceType.Bishop,PieceType.Queen,PieceType.King,PieceType.Bishop,PieceType.Knight,PieceType.Rook],
         [PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn],

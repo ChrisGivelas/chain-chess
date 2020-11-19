@@ -1,9 +1,9 @@
 pragma solidity ^0.6.0;
 
-import "./ChainChessBase.sol";
+import "./ChessGameBase.sol";
 
-contract ChainChess is ChainChessBase {
-    uint constant maxGamesPerUser;
+contract StandardGame is ChessGameBase {
+    uint maxGamesPerUser;
     uint gameCount;
 
     constructor(uint maxGames) public {
