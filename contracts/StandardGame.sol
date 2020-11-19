@@ -14,7 +14,6 @@ contract StandardGame is ChessGameBase {
     struct PlayerProfile {
         uint[] activeGames;
         uint[] completedGames;
-        bool searchingForNewGame;
         uint wins;
         uint losses;
     }
@@ -22,34 +21,54 @@ contract StandardGame is ChessGameBase {
     mapping(uint => Game) games;
     mapping(address => PlayerProfile) players;
 
+    // Using a mapping to keep track of which addresses are stored at which index in *searchingForNewGame* so that we can efficently fetch the most recent
+    // users looking for a game in 
+    address[] searchingForNewGame;
+    mapping(address => uint) public searchingForNewGameIndex;
+
     modifier maxGamesNotReached(address playerAddress) {
         require(players[playerAddress].activeGames.length < maxGamesPerUser, "User already has the maximum number of games started");
         _;
     }
 
     function declareSearchingForGame() public maxGamesNotReached(msg.sender) returns(bool) {
-        require(!players[msg.sender].searchingForNewGame, "User already searching for new game");
+        require(searchingForNewGameIndex[msg.sender] == 0, "User already searching for new game");
 
-        players[msg.sender].searchingForNewGame = true;
+        searchingForNewGameIndex[msg.sender] = searchingForNewGame.length + 1;
+        searchingForNewGame.push(msg.sender);
 
         return true;
     }
 
     function acceptGame(address otherPlayer) public maxGamesNotReached(msg.sender) returns(bool) {
-        require(players[otherPlayer].searchingForNewGame, "Game does not exist");
+        require(searchingForNewGameIndex[otherPlayer] != 0, "Game does not exist");
         require(msg.sender != otherPlayer, "Two different players are required to start a new game");
         
         Game storage newGame = games[gameCount];
 
         initializeGame(gameCount, msg.sender, otherPlayer, newGame);
         
-        players[msg.sender].searchingForNewGame = false;
         players[msg.sender].activeGames.push(newGame.gameId);
-
-        players[otherPlayer].searchingForNewGame = false;
         players[otherPlayer].activeGames.push(newGame.gameId);
 
         gameCount++;
+
+        stopSearchingForGame(otherPlayer);
+        if(searchingForNewGameIndex[msg.sender] != 0) {
+            stopSearchingForGame(msg.sender);
+        }
+    }
+
+    function stopSearchingForGame(address playerAddress) internal {
+        uint realIndex = searchingForNewGameIndex[playerAddress] - 1;
+        uint lastIndex = searchingForNewGame.length - 1;
+
+        if(realIndex != lastIndex) {
+            searchingForNewGame[realIndex] = searchingForNewGame[lastIndex];
+        }
+
+        searchingForNewGame.pop();
+        searchingForNewGameIndex[playerAddress] = 0;
     }
 
     function initializeGame(uint gameId, address player1Address, address player2Address, Game storage newGame) internal {
@@ -186,6 +205,14 @@ contract StandardGame is ChessGameBase {
 
             opponentAddresses[i] = game.board.playerSides[uint8(getOtherSide(game.board.players[msg.sender].side))];
             gameIds[i] = game.gameId;
+        }
+    }
+
+    function getUsersSearchingForGame(uint num) public view returns(address[] memory searchingUsers) {
+        uint lastIndex = searchingForNewGame.length - 1;
+        uint lowerLimit = num > lastIndex ? 0 : lastIndex - num;
+        for(uint i = lastIndex; i > lowerLimit; i--) {
+            searchingUsers[i] = (searchingForNewGame[i]);
         }
     }
 }
