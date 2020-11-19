@@ -1,5 +1,6 @@
 var ChainChess = artifacts.require("ChainChess");
 
 module.exports = function(deployer) {
-    deployer.deploy(ChainChess);
+    // Deploy chain chess with maxGames constructor argument
+    deployer.deploy(ChainChess, 6);
 };

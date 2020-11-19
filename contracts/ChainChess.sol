@@ -1,178 +1,55 @@
 pragma solidity ^0.6.0;
 
-contract ChainChess {
-    uint8 constant MAX_GAMES_PER_USER = 6;
+import "./ChainChessBase.sol";
 
-    PieceType[8][8] default2dPieceLayout = [
-        [PieceType.Rook,PieceType.Knight,PieceType.Bishop,PieceType.Queen,PieceType.King,PieceType.Bishop,PieceType.Knight,PieceType.Rook],
-        [PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn],
-        [PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None],
-        [PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None],
-        [PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None],
-        [PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None,PieceType.None],
-        [PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn,PieceType.Pawn],
-        [PieceType.Rook,PieceType.Knight,PieceType.Bishop,PieceType.Queen,PieceType.King,PieceType.Bishop,PieceType.Knight,PieceType.Rook]
-    ];
-
-    PlayerSide[8] defaultRankOwnership = [
-        PlayerSide.White,
-        PlayerSide.White,
-        PlayerSide.None,
-        PlayerSide.None,
-        PlayerSide.None,
-        PlayerSide.None,
-        PlayerSide.Black,
-        PlayerSide.Black
-    ];
-
+contract ChainChess is ChainChessBase {
+    uint constant maxGamesPerUser;
     uint gameCount;
-    
-    mapping(uint => Game) games;
-    mapping(address => Game[]) userGames;
-    mapping(address => bool) public searchingForNewGame;
 
-    enum PieceType { None, Pawn, Knight, Bishop, Rook, Queen, King }
-    enum PlayerSide { None, White, Black }
-
-    struct Piece {
-        address owner;
-        PieceType pieceType;
-        PlayerSide side;
-        bool hasMadeInitialMove;
-    }
-
-    struct Player {
-        PlayerSide side;
-        uint8 kingRankPos;
-        uint8 kingFilePos;
-    }
-
-    struct BoardSquare {
-        bool isOccupied;
-        Piece piece;
-    }
-
-    struct Board {
-        BoardSquare[8][8] squares;
-        mapping(uint8 => address) playerSides;
-        mapping(address => Player) players;
-        Piece[] eliminatedPieces;
-        PlayerSide inCheck;
-    }
-
-    struct Game {
-        Board board;
-        uint gameId;
-        PlayerSide currentTurn;
-        bool started;
-        bool ended;
-        address winner;
-    }
-
-    modifier verifyMoveForGame(uint gameId) {
-        require(games[gameId].started, "Game does not exist.");
-        require(games[gameId].board.players[msg.sender].side != PlayerSide.None, "User is not a part of this game.");
-        _;
-    }
-
-    modifier maxGamesNotReached(address player) {
-        require(userGames[player].length < MAX_GAMES_PER_USER, "User already has the maximum number of games started");
-        _;
-    }
-
-    constructor() public {
+    constructor(uint maxGames) public {
+        maxGamesPerUser = maxGames;
         gameCount = 0;
     }
 
-    function declareSearchingForGame() public maxGamesNotReached(msg.sender) returns(bool) {
-        require(!searchingForNewGame[msg.sender], "User already searching for new game");
+    struct PlayerProfile {
+        uint[] activeGames;
+        uint[] completedGames;
+        bool searchingForNewGame;
+        uint wins;
+        uint losses;
+    }
 
-        searchingForNewGame[msg.sender] = true;
+    mapping(uint => Game) games;
+    mapping(address => PlayerProfile) players;
+
+    modifier maxGamesNotReached(address playerAddress) {
+        require(players[playerAddress].activeGames.length < maxGamesPerUser, "User already has the maximum number of games started");
+        _;
+    }
+
+    function declareSearchingForGame() public maxGamesNotReached(msg.sender) returns(bool) {
+        require(!players[msg.sender].searchingForNewGame, "User already searching for new game");
+
+        players[msg.sender].searchingForNewGame = true;
 
         return true;
     }
 
     function acceptGame(address otherPlayer) public maxGamesNotReached(msg.sender) returns(bool) {
-        require(searchingForNewGame[otherPlayer], "Game does not exist");
-        searchingForNewGame[otherPlayer] = false;
-
-        if(searchingForNewGame[msg.sender]) {
-            searchingForNewGame[msg.sender] = false;
-        }
-
+        require(players[otherPlayer].searchingForNewGame, "Game does not exist");
+        require(msg.sender != otherPlayer, "Two different players are required to start a new game");
+        
         Game storage newGame = games[gameCount];
 
         initializeGame(gameCount, msg.sender, otherPlayer, newGame);
+        
+        players[msg.sender].searchingForNewGame = false;
+        players[msg.sender].activeGames.push(newGame.gameId);
+
+        players[otherPlayer].searchingForNewGame = false;
+        players[otherPlayer].activeGames.push(newGame.gameId);
 
         gameCount++;
-        
-        Game[] storage player1Games = userGames[msg.sender];
-        player1Games.push(newGame);
-
-        Game[] storage player2Games = userGames[otherPlayer];
-        player2Games.push(newGame);
-    }
-
-    function movePiece(uint gameId, uint8 prevRankPos, uint8 prevFilePos, uint8 newRankPos, uint8 newFilePos) public verifyMoveForGame(gameId) returns (bool) {
-        Game storage game = games[gameId];
-        Player storage currentPlayer = game.board.players[msg.sender];
-        Player storage otherPlayer = game.board.players[game.board.playerSides[uint8(getOtherSide(currentPlayer.side))]];
-        BoardSquare storage selectedSquare = game.board.squares[prevRankPos][prevFilePos];
-        BoardSquare storage squareToMoveTo = game.board.squares[newRankPos][newFilePos];
-
-        require(selectedSquare.isOccupied, "No piece found at this location");
-        require(selectedSquare.piece.owner == msg.sender, "Piece is not owned by sender");
-        require(isValidMove(prevRankPos, prevFilePos, newRankPos, newFilePos, selectedSquare.piece, game.board), "Invalid move");
-
-        // If a piece was eliminated, add it to the eliminatedPieces array
-        if(squareToMoveTo.isOccupied) {
-            game.board.eliminatedPieces.push(clonePiece(squareToMoveTo.piece));
-        }
-
-        // Remove piece from previous location...
-        selectedSquare.isOccupied = false;
-        selectedSquare.piece.owner = address(0);
-
-        // ...and move it to new square
-        squareToMoveTo.isOccupied = true;
-        squareToMoveTo.piece.owner = msg.sender;
-        squareToMoveTo.piece.pieceType = selectedSquare.piece.pieceType;
-        squareToMoveTo.piece.side = selectedSquare.piece.side;
-        squareToMoveTo.piece.hasMadeInitialMove = true;
-
-        // If this move does not take the players king out of check, then revert this move
-        if(game.board.inCheck == currentPlayer.side) {
-            (bool inCheck,) = checkKingState(game, currentPlayer);
-
-            if(inCheck) {
-                revert("Player is in check. Must protect king");
-            }
-        }
-
-        // Check if the game is done
-        (bool inCheck, bool checkMated) = checkKingState(game, otherPlayer);
-
-        if(checkMated) {
-            game.ended = true;
-            game.winner = msg.sender;
-        } else {
-            if(inCheck) {
-                game.board.inCheck = otherPlayer.side;
-            }
-
-            if(selectedSquare.piece.pieceType == PieceType.King) {
-                currentPlayer.kingRankPos = newRankPos;
-                currentPlayer.kingFilePos = newFilePos;
-            }
-
-            game.currentTurn = otherPlayer.side;
-        }
-
-        return true;
-    }
-
-    function clonePiece(Piece memory piece) pure internal returns (Piece memory) {
-        return Piece({owner: piece.owner, pieceType: piece.pieceType, side: piece.side, hasMadeInitialMove: piece.hasMadeInitialMove});
     }
 
     function initializeGame(uint gameId, address player1Address, address player2Address, Game storage newGame) internal {
@@ -207,234 +84,108 @@ contract ChainChess {
         newGame.winner = address(0);
     }
 
-    int8[2][8] possibleKingMoves = [
-        [-1,-1],
-        [-1,int8(0)],
-        [-1,int8(1)],
-        [int8(0),int8(1)],
-        [int8(1),int8(1)],
-        [int8(1),0],
-        [int8(1),-1],
-        [int8(0),-1]
-    ];
+    function movePiece(uint gameId, uint8 prevRankPos, uint8 prevFilePos, uint8 newRankPos, uint8 newFilePos) public returns (string memory) {
+        require(games[gameId].started, "Game does not exist.");
+        require(!games[gameId].ended, "Game is done.");
+        require(games[gameId].board.players[msg.sender].side != PlayerSide.None, "User is not a part of this game.");
 
-    function checkKingState(Game memory game, Player memory player) view internal returns(bool, bool) {
-        uint8 rankPos;
-        uint8 filePos;
-        
-        rankPos = player.kingRankPos;
-        filePos = player.kingFilePos;
+        Game storage game = games[gameId];
+        Player storage currentPlayer = game.board.players[msg.sender];
+        Player storage otherPlayer = game.board.players[game.board.playerSides[uint8(getOtherSide(currentPlayer.side))]];
+        BoardSquare storage selectedSquare = game.board.squares[prevRankPos][prevFilePos];
+        BoardSquare storage squareToMoveTo = game.board.squares[newRankPos][newFilePos];
 
-        if(!positionIsThreatened(rankPos, filePos, game.board, player.side)) {
-            return (false, false);
+        require(selectedSquare.isOccupied, "No piece found at this location");
+        require(selectedSquare.piece.owner == msg.sender, "Piece is not owned by sender");
+        require(isValidMove(prevRankPos, prevFilePos, newRankPos, newFilePos, selectedSquare.piece, game.board), "Invalid move");
+
+        bool pieceWasCaptured = false;
+        // If a piece was eliminated, add it to the capturedPieces array
+        if(squareToMoveTo.isOccupied) {
+            game.board.capturedPieces.push(clonePiece(squareToMoveTo.piece));
+            pieceWasCaptured = true;
         }
 
-        //Check for safe spaces for king to move
-        for(uint8 i = 0 ; i < possibleKingMoves.length ; i++) {
-            int8[2] memory currentMove = possibleKingMoves[i];
+        // Remove piece from previous location...
+        selectedSquare.isOccupied = false;
+        selectedSquare.piece.owner = address(0);
 
-            if(int8(rankPos) + currentMove[0] < 0 || int8(rankPos) + currentMove[0] > 7 || int8(filePos) + currentMove[1] < 0 || int8(filePos) + currentMove[1] > 7) {
-                continue;
-            } else {
-                if(!positionIsThreatened(uint8(int8(rankPos) + currentMove[0]), uint8(int8(filePos) + currentMove[1]), game.board, player.side)) return (true, false);
+        // ...and move it to new square
+        squareToMoveTo.isOccupied = true;
+        squareToMoveTo.piece.owner = msg.sender;
+        squareToMoveTo.piece.pieceType = selectedSquare.piece.pieceType;
+        squareToMoveTo.piece.side = selectedSquare.piece.side;
+        squareToMoveTo.piece.hasMadeInitialMove = true;
+
+        // If this move does not take the players king out of check, then revert this move
+        if(game.board.inCheck == currentPlayer.side) {
+            (bool inCheck,) = checkKingState(game, currentPlayer);
+
+            if(inCheck) {
+                revert("Player is in check. Must protect king");
             }
-        }
-
-        return (true, true);
-    }
-
-    function isValidMove(uint8 prevRankPos, uint8 prevFilePos, uint8 newRankPos, uint8 newFilePos, Piece memory piece, Board memory board) view internal returns(bool) {
-        if(board.squares[newRankPos][newFilePos].isOccupied && board.squares[newRankPos][newFilePos].piece.side == piece.side) return false;
-
-        if(piece.pieceType == PieceType.Pawn) {
-            return isValidPawnMove(prevRankPos, prevFilePos, newRankPos, newFilePos, piece, board);
-        } else if (piece.pieceType == PieceType.Knight) { 
-            return isValidKnightMove(prevRankPos, prevFilePos, newRankPos, newFilePos);
-        } else if (piece.pieceType == PieceType.Bishop) {
-            return isValidDiagonalMove(prevRankPos, prevFilePos, newRankPos, newFilePos, true);
-        } else if (piece.pieceType == PieceType.Rook) {
-            return isValidAxialMove(prevRankPos, prevFilePos, newRankPos, newFilePos, true);
-        } else if (piece.pieceType == PieceType.Queen) {
-            return isValidAxialMove(prevRankPos, prevFilePos, newRankPos, newFilePos, true) || isValidDiagonalMove(prevRankPos, prevFilePos, newRankPos, newFilePos, true);
-        } else if (piece.pieceType == PieceType.Knight) {
-            return isValidKingMove(prevRankPos, prevFilePos, newRankPos, newFilePos, piece, board);
-        }
-    }
-
-    function isValidDiagonalMove(uint8 prevRankPos, uint8 prevFilePos, uint8 newRankPos, uint8 newFilePos, bool repeating) pure internal returns(bool) {
-        (uint rankPosDiff, uint filePosDiff) = getPositionDiff(prevRankPos, prevFilePos, newRankPos, newFilePos);
-
-        if(rankPosDiff == 0 || filePosDiff == 0) {
-            return false;
-        }
-
-        if(repeating) {
-            return rankPosDiff == filePosDiff;
         } else {
-            return rankPosDiff == 1 && filePosDiff == 1;
+            game.board.inCheck = PlayerSide.None;
         }
-    }
 
-    function isValidAxialMove(uint8 prevRankPos, uint8 prevFilePos, uint8 newRankPos, uint8 newFilePos, bool repeating) pure internal returns(bool) {
-        (uint rankPosDiff, uint filePosDiff) = getPositionDiff(prevRankPos, prevFilePos, newRankPos, newFilePos);
+        // Check if the game is done
+        (bool inCheck, bool checkMated) = checkKingState(game, otherPlayer);
 
-        if(repeating) {
-            return (rankPosDiff == 0 && filePosDiff != 0) || (rankPosDiff != 0 && filePosDiff == 0);
+        if(checkMated) {
+            game.ended = true;
+            game.winner = msg.sender;
         } else {
-            return (rankPosDiff == 0 && filePosDiff == 1) || (rankPosDiff == 1 && filePosDiff == 0);
-        }
-    }
-
-    function isValidKnightMove(uint8 prevRankPos, uint8 prevFilePos, uint8 newRankPos, uint8 newFilePos) pure internal returns(bool) {
-        (uint rankPosDiff, uint filePosDiff) = getPositionDiff(prevRankPos, prevFilePos, newRankPos, newFilePos);
-
-        return rankPosDiff == 2 && filePosDiff == 1 || rankPosDiff == 1 && filePosDiff == 2;
-    }
-
-    function isValidPawnMove(uint8 prevRankPos, uint8 prevFilePos, uint8 newRankPos, uint8 newFilePos, Piece memory piece, Board memory board) pure internal returns(bool) {
-        // Make sure pawn is going in correct direction for its side
-        if((piece.side == PlayerSide.Black && newRankPos >= prevRankPos) || (newRankPos <= prevRankPos)) {
-            return false;
-        }
-
-        (uint rankPosDiff, uint filePosDiff) = getPositionDiff(prevRankPos, prevFilePos, newRankPos, newFilePos);
-
-        if(filePosDiff == 0) {
-            if(rankPosDiff == 1) return true;
-            if(!piece.hasMadeInitialMove && rankPosDiff == 2) return true;
-        }
-
-        // Kill move
-        if(filePosDiff == 1 && rankPosDiff == 1) {
-            return board.squares[newRankPos][newFilePos].isOccupied;
-        }
-
-        return false;
-    }
-
-    function isValidKingMove(uint8 prevRankPos, uint8 prevFilePos, uint8 newRankPos, uint8 newFilePos, Piece memory piece, Board memory board) view internal returns(bool) {
-        if(isValidAxialMove(prevRankPos, prevFilePos, newRankPos, newFilePos, false) || isValidDiagonalMove(prevRankPos, prevFilePos, newRankPos, newFilePos, false)) {
-            return !positionIsThreatened(newRankPos, newFilePos, board, piece.side);
-        }
-    }
-
-    function positionIsThreatened(uint8 rankPos, uint8 filePos, Board memory board, PlayerSide side) view internal returns(bool) {
-        //Check below ranks, same file
-        if(axialIsThreatened(rankPos, filePos, board, side, true, false)) return true;
-        //Check above ranks, same file
-        if(axialIsThreatened(rankPos, filePos, board, side, true, true)) return true;
-        //Check below files, same rank
-        if(axialIsThreatened(rankPos, filePos, board, side, false, false)) return true;
-        //Check above files, same rank
-        if(axialIsThreatened(rankPos, filePos, board, side, false, true)) return true;
-        //Check backwardLeft diagonal
-        if(diagonalIsThreatened(rankPos, filePos, board, side, false, false, side == PlayerSide.Black ? true : false)) return true;
-        //Check backwardRight diagonal
-        if(diagonalIsThreatened(rankPos, filePos, board, side, false, true, side == PlayerSide.Black ? true : false)) return true;
-        //Check forwardRight diagonal
-        if(diagonalIsThreatened(rankPos, filePos, board, side, true, true, side == PlayerSide.White ? true : false)) return true;
-        //Check forwardLeft diagonal
-        if(diagonalIsThreatened(rankPos, filePos, board, side, true, false, side == PlayerSide.White ? true : false)) return true;
-        //Check for threatening knight
-        if(knightThreatensPosition(rankPos, filePos, board, side)) return true;
-    }
-
-    function axialIsThreatened(uint8 rankPos, uint8 filePos, Board memory board, PlayerSide side, bool iteration_dimension, bool iteration_direction) pure internal returns(bool) {
-        BoardSquare memory square;
-        uint8 iter = iteration_dimension ? rankPos : filePos;
-        
-        if(iteration_direction ? iter < 7 : iter > 0) {
-            iter = iteration_direction ? iter+1 : iter-1;
-            while(iteration_direction ? iter <= 7 : iter >= 0) {
-                square = board.squares[iteration_dimension ? iter : rankPos][!iteration_dimension ? iter : filePos];
-                if(square.isOccupied) {
-                    if(square.piece.side == side) {
-                        break;
-                    } else {
-                        if(square.piece.pieceType == PieceType.Queen || square.piece.pieceType == PieceType.Rook) return true;
-                    }
-                }
-                iter = iteration_direction ? iter+1 : iter-1;
+            if(inCheck) {
+                game.board.inCheck = otherPlayer.side;
             }
-        }
 
-        return false;
-    }
-
-    function diagonalIsThreatened(uint8 rankPos, uint8 filePos, Board memory board, PlayerSide side, bool rank_iteration_direction, bool file_iteration_direction, bool checkForPawn) pure internal returns(bool) {
-        if((rank_iteration_direction ? rankPos == 7 : rankPos == 0) || (file_iteration_direction ? filePos == 7 : filePos == 0)) return false;
-        BoardSquare memory square;
-        uint8 rank_iter = rank_iteration_direction ? rankPos+1 : rankPos-1;
-        uint8 file_iter = file_iteration_direction ? filePos+1 : filePos-1;
-
-        if((rank_iteration_direction ? rank_iter < 7 : rank_iter > 0) && (file_iteration_direction ? file_iter < 7 : file_iter > 0)) {
-            if(checkForPawn) {
-                square = board.squares[rank_iter][file_iter];
-                if(square.isOccupied && square.piece.side != side && square.piece.pieceType == PieceType.Pawn) {
-                    return true;
-                }
+            if(selectedSquare.piece.pieceType == PieceType.King) {
+                currentPlayer.kingRankPos = newRankPos;
+                currentPlayer.kingFilePos = newFilePos;
             }
-            while((rank_iteration_direction ? rank_iter <= 7 : rank_iter >= 0) && (file_iteration_direction ? file_iter <= 7 : file_iter >= 0)) {
-                square = board.squares[rank_iter][file_iter];
-                if(square.isOccupied) {
-                    if(square.piece.side != side && square.piece.pieceType == PieceType.Queen || square.piece.pieceType == PieceType.Bishop) return true;
-                    break;
-                }
-                rank_iter = rank_iteration_direction ? rank_iter+1 : rank_iter-1;
-                file_iter = file_iteration_direction ? file_iter+1 : file_iter-1;
-            }
+
+            game.currentTurn = otherPlayer.side;
         }
 
-        return false;
-    }
+        string memory moveHistoryEntry = getMoveHistoryEntry(prevRankPos, prevFilePos, newRankPos, newFilePos, uint8(squareToMoveTo.piece.pieceType), pieceWasCaptured, game.ended);
 
-    int8[2][8] possibleKnightMoves = [
-        [-2,-1],
-        [-2,int8(1)],
-        [-1,int8(2)],
-        [int8(1),int8(2)],
-        [int8(2),int8(1)],
-        [int8(2),-1],
-        [int8(1),-2],
-        [-1,-2]
-    ];
+        game.moveHistory = strConcat(game.moveHistory, moveHistoryEntry);
 
-    function knightThreatensPosition(uint8 rankPos, uint8 filePos, Board memory board, PlayerSide side) view internal returns (bool) {
-        for(uint8 i = 0 ; i < possibleKnightMoves.length ; i++) {
-            int8[2] memory currentMove = possibleKnightMoves[i];
-
-            if(int8(rankPos) + currentMove[0] < 0 || int8(rankPos) + currentMove[0] > 7 || int8(filePos) + currentMove[1] < 0 || int8(filePos) + currentMove[1] > 7) {
-                continue;
-            } else {
-                BoardSquare memory squareToCheck = board.squares[uint(int8(rankPos) + currentMove[0])][uint(int8(filePos) + currentMove[1])];
-                if(squareToCheck.isOccupied && squareToCheck.piece.pieceType == PieceType.Knight && squareToCheck.piece.side != side) return true;
-            }
-        }
-
-        return false;
-    }
-
-    function getPositionDiff(uint8 prevRankPos, uint8 prevFilePos, uint8 newRankPos, uint8 newFilePos) pure internal returns (uint8 rankPosDiff, uint8 filePosDiff) {
-        if(prevRankPos > newRankPos) {
-            rankPosDiff = prevRankPos - newRankPos;
-        } else if(prevRankPos < newRankPos) {
-            rankPosDiff = newRankPos - prevRankPos;
-        } else {
-            rankPosDiff = 0;
-        }
-
-        if(prevFilePos > newFilePos) {
-            filePosDiff = prevFilePos - newFilePos;
-        } else if(prevFilePos > newFilePos) {
-            filePosDiff = newFilePos - prevFilePos;
-        } else {
-            filePosDiff = 0;
-        }
+        return moveHistoryEntry;
     }
 
     function getOtherSide(PlayerSide playerSide) pure internal returns(PlayerSide) {
         if(playerSide == PlayerSide.White) return PlayerSide.Black;
         else if(playerSide == PlayerSide.Black) return PlayerSide.Black;
         else return PlayerSide.None;
+    }
+
+    function getGame(uint gameId) public view returns(string memory, PlayerSide , bool, bool, address, PlayerSide, address, PlayerSide, address) {
+        Game storage game = games[gameId];
+
+        return (
+            game.moveHistory,
+            game.currentTurn,
+            game.started,
+            game.ended,
+            game.board.playerSides[uint8(PlayerSide.White)],
+            PlayerSide.White,
+            game.board.playerSides[uint8(PlayerSide.Black)],
+            PlayerSide.Black,
+            game.winner
+        );
+    }
+
+    function getactiveGames() public view returns(address[] memory opponentAddresses, uint[] memory gameIds) {
+        uint[] storage activeGames = players[msg.sender].activeGames;
+
+        require(activeGames.length > 0, "User has no active games");
+        
+        for(uint i = 0; i < activeGames.length; i++) {
+            Game storage game = games[activeGames[i]];
+
+            opponentAddresses[i] = game.board.playerSides[uint8(getOtherSide(game.board.players[msg.sender].side))];
+            gameIds[i] = game.gameId;
+        }
     }
 }
