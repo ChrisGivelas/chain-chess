@@ -22,7 +22,7 @@ contract StandardGame is ChessGameBase {
     mapping(address => PlayerProfile) players;
 
     // Using a mapping to keep track of which addresses are stored at which index in *searchingForNewGame* so that we can efficently fetch the most recent
-    // users looking for a game in 
+    // users looking for a game in *searchingForNewGame*
     address[] searchingForNewGame;
     mapping(address => uint) public searchingForNewGameIndex;
 
