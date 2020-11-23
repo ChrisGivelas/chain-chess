@@ -1,14 +1,10 @@
 .App {
     text-align: center;
-}
-
-.App-header {
     background-color: #282c34;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     font-size: calc(10px + 2vmin);
     color: white;
 }
@@ -20,4 +16,49 @@ h4,
 h5,
 h6 {
     margin: 1rem;
+}
+
+.gamesearch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 100%;
+    gap: 40px 40px;
+}
+
+.searching-opponent {
+    width: auto;
+    height: fit-content;
+    position: relative;
+    justify-self: center;
+}
+
+.blockie-holder {
+    width: auto;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.short-address {
+    width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: black;
+    font-weight: bold;
+    display: inline-block;
+}
+
+.blurred {
+    filter: blur(4px);
 }

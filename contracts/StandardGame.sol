@@ -47,7 +47,7 @@ contract StandardGame is ChessGameBase {
         return false;
     }
 
-    function acceptGame(address otherPlayer) public maxGamesNotReached(msg.sender) returns(bool) {
+    function acceptGame(address otherPlayer) public maxGamesNotReached(msg.sender) returns(uint) {
         require(userIsSearching(otherPlayer), "Game does not exist");
         require(msg.sender != otherPlayer, "Two different players are required to start a new game");
         
@@ -64,6 +64,8 @@ contract StandardGame is ChessGameBase {
         if(userIsSearching(msg.sender)) {
             stopSearchingForGame(msg.sender);
         }
+
+        return newGame.gameId;
     }
 
     function stopSearchingForGame(address playerAddress) internal {
@@ -183,10 +185,14 @@ contract StandardGame is ChessGameBase {
         else return PlayerSide.None;
     }
 
-    function getGame(uint gameId) public view returns(string memory, PlayerSide , bool, bool, address, PlayerSide, address, PlayerSide, address) {
+    function getGameByGameId(uint gameId) public view returns(uint, string memory, PlayerSide , bool, bool, address, PlayerSide, address, PlayerSide, address) {
+        require(gameId <= gameCount, "Game does not exist");
+        require(games[gameId].board.players[msg.sender].side != PlayerSide.None, "User is not a part of this game.");
+
         Game storage game = games[gameId];
 
         return (
+            game.gameId,
             game.moveHistory,
             game.currentTurn,
             game.started,
@@ -199,6 +205,28 @@ contract StandardGame is ChessGameBase {
         );
     }
 
+    function getGameByOpponent(address opponentAddress) public view returns(uint, string memory, PlayerSide, bool, bool, address, PlayerSide, address, PlayerSide, address) {
+        uint[] storage activeGames = players[msg.sender].activeGames;
+
+        for(uint i = 0; i < activeGames.length; i++) {
+            if(games[activeGames[i]].board.players[msg.sender].side != PlayerSide.None && games[activeGames[i]].board.players[opponentAddress].side != PlayerSide.None) {
+                Game storage game = games[activeGames[i]];
+                return (
+                    game.gameId,
+                    game.moveHistory,
+                    game.currentTurn,
+                    game.started,
+                    game.ended,
+                    game.board.playerSides[uint8(PlayerSide.White)],
+                    PlayerSide.White,
+                    game.board.playerSides[uint8(PlayerSide.Black)],
+                    PlayerSide.Black,
+                    game.winner
+                );
+            }
+        }
+    }
+    
     function getActiveGames() public view returns(address[] memory opponentAddresses, uint[] memory gameIds) {
         uint[] storage activeGames = players[msg.sender].activeGames;
         
