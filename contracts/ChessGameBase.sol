@@ -1,5 +1,7 @@
 pragma solidity ^0.6.0;
 
+import "./StringUtils.sol";
+
 contract ChessGameBase {
     PieceType[8][8] default2dPieceLayout = [
         [PieceType.Rook,PieceType.Knight,PieceType.Bishop,PieceType.Queen,PieceType.King,PieceType.Bishop,PieceType.Knight,PieceType.Rook],
@@ -293,7 +295,7 @@ contract ChessGameBase {
         string[8] memory fileIdMapping = ["a","b","c","d","e","f","g","h"];
         string[8] memory rankIdMapping = ["1","2","3","4","5","6","7","8"];
         string[6] memory pieceIdMapping = ["P", "N", "B", "R", "Q", "K" ];
-        return strConcat(
+        return StringUtils.strConcat(
             pieceIdMapping[pieceEnumValue - 1],
             fileIdMapping[prevFilePos],
             rankIdMapping[prevRankPos],
@@ -302,46 +304,5 @@ contract ChessGameBase {
             rankIdMapping[newRankPos],
             !isGameEnd ? "," : "."
         );
-    }
-
-    function strConcat(string memory _a, string memory _b) internal pure returns (string memory _concatenatedString) {
-        return strConcat(_a, _b, "", "", "", "", "");
-    }
-
-    // Adapted from https://github.com/provable-things/ethereum-api/blob/9f34daaa550202c44f48cdee7754245074bde65d/oraclizeAPI_0.5.sol#L959
-    function strConcat(string memory _a, string memory _b, string memory _c, string memory _d, string memory _e, string memory _f, string memory _g) internal pure returns (string memory _concatenatedString) {
-        bytes memory _ba = bytes(_a);
-        bytes memory _bb = bytes(_b);
-        bytes memory _bc = bytes(_c);
-        bytes memory _bd = bytes(_d);
-        bytes memory _be = bytes(_e);
-        bytes memory _bf = bytes(_f);
-        bytes memory _bg = bytes(_g);
-        string memory abcdefg = new string(_ba.length + _bb.length + _bc.length + _bd.length + _be.length + _bf.length + _bg.length);
-        bytes memory babcdefg = bytes(abcdefg);
-        uint k = 0;
-        uint i = 0;
-        for (i = 0; i < _ba.length; i++) {
-            babcdefg[k++] = _ba[i];
-        }
-        for (i = 0; i < _bb.length; i++) {
-            babcdefg[k++] = _bb[i];
-        }
-        for (i = 0; i < _bc.length; i++) {
-            babcdefg[k++] = _bc[i];
-        }
-        for (i = 0; i < _bd.length; i++) {
-            babcdefg[k++] = _bd[i];
-        }
-        for (i = 0; i < _be.length; i++) {
-            babcdefg[k++] = _be[i];
-        }
-        for (i = 0; i < _bf.length; i++) {
-            babcdefg[k++] = _bf[i];
-        }
-        for (i = 0; i < _bg.length; i++) {
-            babcdefg[k++] = _bg[i];
-        }
-        return string(babcdefg);
     }
 }

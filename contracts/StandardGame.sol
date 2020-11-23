@@ -1,5 +1,6 @@
 pragma solidity ^0.6.0;
 
+import "./StringUtils.sol";
 import "./ChessGameBase.sol";
 
 contract StandardGame is ChessGameBase {
@@ -21,10 +22,7 @@ contract StandardGame is ChessGameBase {
     mapping(uint => Game) games;
     mapping(address => PlayerProfile) players;
 
-    // Using a mapping to keep track of which addresses are stored at which index in *searchingForNewGame* so that we can efficently fetch the most recent
-    // users looking for a game in *searchingForNewGame*
-    address[] searchingForNewGame;
-    mapping(address => uint) public searchingForNewGameIndex;
+    address[] public searchingForNewGame;
 
     modifier maxGamesNotReached(address playerAddress) {
         require(players[playerAddress].activeGames.length < maxGamesPerUser, "User already has the maximum number of games started");
@@ -32,16 +30,25 @@ contract StandardGame is ChessGameBase {
     }
 
     function declareSearchingForGame() public maxGamesNotReached(msg.sender) returns(bool) {
-        require(searchingForNewGameIndex[msg.sender] == 0, "User already searching for new game");
+        require(!userIsSearching(msg.sender), "User already searching for new game");
 
-        searchingForNewGameIndex[msg.sender] = searchingForNewGame.length + 1;
         searchingForNewGame.push(msg.sender);
 
         return true;
     }
 
+    function userIsSearching(address playerAddress) internal view returns(bool) {
+        for(uint i = 0; i < searchingForNewGame.length; i++) {
+            if(searchingForNewGame[i] == playerAddress) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     function acceptGame(address otherPlayer) public maxGamesNotReached(msg.sender) returns(bool) {
-        require(searchingForNewGameIndex[otherPlayer] != 0, "Game does not exist");
+        require(userIsSearching(otherPlayer), "Game does not exist");
         require(msg.sender != otherPlayer, "Two different players are required to start a new game");
         
         Game storage newGame = games[gameCount];
@@ -54,21 +61,18 @@ contract StandardGame is ChessGameBase {
         gameCount++;
 
         stopSearchingForGame(otherPlayer);
-        if(searchingForNewGameIndex[msg.sender] != 0) {
+        if(userIsSearching(msg.sender)) {
             stopSearchingForGame(msg.sender);
         }
     }
 
     function stopSearchingForGame(address playerAddress) internal {
-        uint realIndex = searchingForNewGameIndex[playerAddress] - 1;
-        uint lastIndex = searchingForNewGame.length - 1;
-
-        if(realIndex != lastIndex) {
-            searchingForNewGame[realIndex] = searchingForNewGame[lastIndex];
+        for(uint i = 0; i < searchingForNewGame.length; i++) {
+            if(searchingForNewGame[i] == playerAddress) {
+                searchingForNewGame[i] = searchingForNewGame[searchingForNewGame.length - 1];
+                searchingForNewGame.pop();
+            }
         }
-
-        searchingForNewGame.pop();
-        searchingForNewGameIndex[playerAddress] = 0;
     }
 
     function initializeGame(uint gameId, address player1Address, address player2Address, Game storage newGame) internal {
@@ -168,7 +172,7 @@ contract StandardGame is ChessGameBase {
 
         string memory moveHistoryEntry = getMoveHistoryEntry(prevRankPos, prevFilePos, newRankPos, newFilePos, uint8(squareToMoveTo.piece.pieceType), pieceWasCaptured, game.ended);
 
-        game.moveHistory = strConcat(game.moveHistory, moveHistoryEntry);
+        game.moveHistory = StringUtils.strConcat(game.moveHistory, moveHistoryEntry);
 
         return moveHistoryEntry;
     }
@@ -195,10 +199,8 @@ contract StandardGame is ChessGameBase {
         );
     }
 
-    function getactiveGames() public view returns(address[] memory opponentAddresses, uint[] memory gameIds) {
+    function getActiveGames() public view returns(address[] memory opponentAddresses, uint[] memory gameIds) {
         uint[] storage activeGames = players[msg.sender].activeGames;
-
-        require(activeGames.length > 0, "User has no active games");
         
         for(uint i = 0; i < activeGames.length; i++) {
             Game storage game = games[activeGames[i]];
@@ -208,11 +210,7 @@ contract StandardGame is ChessGameBase {
         }
     }
 
-    function getUsersSearchingForGame(uint num) public view returns(address[] memory searchingUsers) {
-        uint lastIndex = searchingForNewGame.length - 1;
-        uint lowerLimit = num > lastIndex ? 0 : lastIndex - num;
-        for(uint i = lastIndex; i > lowerLimit; i--) {
-            searchingUsers[i] = (searchingForNewGame[i]);
-        }
+    function getUsersSearchingForGame() public view returns(address[] memory) {
+        return searchingForNewGame;
     }
 }
