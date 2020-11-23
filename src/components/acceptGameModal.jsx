@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { Box, Button, Modal, Card, Heading, Flex } from "rimble-ui";
 import { useHistory } from "react-router-dom";
-import { parseResultToGame } from "../game_parsing_utils";
+import { parseResultToGame } from "../utils/game_parsing";
+import { getGameByOpponent } from "../standardGame";
+import ButtonWithLoader from "../components/buttonWithLoader";
 
 function AcceptGameModal({
     OpenModalComponent,
@@ -11,6 +13,7 @@ function AcceptGameModal({
     const history = useHistory();
 
     const [isOpen, setIsOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     const closeModal = (e) => {
         e && e.preventDefault();
@@ -22,28 +25,25 @@ function AcceptGameModal({
         setIsOpen(true);
     };
 
-    const getGameByOpponent = () => {
-        return window.cc_standardGameContract
-            .deployed()
-            .then(async (instance) => {
-                return await instance.getGameByOpponent(opponentAddress, {
-                    from: connectedWalletAddress,
-                });
-            });
-    };
-
     const acceptGame = () => {
         if (opponentAddress !== undefined) {
             window.cc_standardGameContract.deployed().then((instance) => {
+                setIsLoading(true);
                 instance
                     .acceptGame(opponentAddress, {
                         from: connectedWalletAddress,
                     })
-                    .then(getGameByOpponent)
+                    .then(() =>
+                        getGameByOpponent(
+                            connectedWalletAddress,
+                            opponentAddress
+                        )
+                    )
                     .then((game) => {
                         var parsedGame = parseResultToGame(game);
                         console.log(parsedGame);
                         history.push(`/game/${parsedGame.gameId}`);
+                        setIsLoading(false);
                         closeModal();
                     });
             });
@@ -88,9 +88,11 @@ function AcceptGameModal({
                         <Button.Outline onClick={closeModal}>
                             Cancel
                         </Button.Outline>
-                        <Button ml={3} onClick={acceptGame}>
-                            Confirm
-                        </Button>
+                        <ButtonWithLoader
+                            onClick={acceptGame}
+                            text="Confirm"
+                            isLoading={isLoading}
+                        />
                     </Flex>
                 </Card>
             </Modal>

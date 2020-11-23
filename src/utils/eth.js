@@ -16,14 +16,6 @@ export const updateWeb3AndReturnWeb3Provider = () => {
     return web3Provider;
 };
 
-export const getStandardGameContract = (web3Provider) => {
-    var StandardGameArtifact = require("./contracts/StandardGame.json");
-    var StandardGameContract = TruffleContract(StandardGameArtifact);
-    StandardGameContract.setProvider(web3Provider);
-
-    return StandardGameContract;
-};
-
 export const checksumAddr = (addr) => window.web3.utils.toChecksumAddress(addr);
 
 export const getAddressBlockie = (addr) => {

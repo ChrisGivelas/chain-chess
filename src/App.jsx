@@ -1,12 +1,9 @@
 import React from "react";
 import "./App.css";
-import {
-    getStandardGameContract,
-    updateWeb3AndReturnWeb3Provider,
-    checksumAddr,
-} from "./ethUtils";
+import { updateWeb3AndReturnWeb3Provider, checksumAddr } from "./utils/eth";
+import { getStandardGameContract } from "./standardGame";
 import { BrowserRouter, Route, Switch, Redirect } from "react-router-dom";
-import { PrivateRoute } from "./routeUtils";
+import { PrivateRoute } from "./utils/route";
 import Landing from "./views/Landing";
 import ActiveGames from "./views/ActiveGames";
 import GameSearch from "./views/GameSearch";
@@ -20,6 +17,7 @@ class App extends React.Component {
         this.state = {
             connectedWalletAddress: null,
             usersSearching: null,
+            isLoading: false,
         };
     }
 
@@ -82,20 +80,26 @@ class App extends React.Component {
 
     connectWallet = () => {
         console.log("connect wallet");
+        this.setState({ isLoading: true });
 
-        window.ethereum.enable().then(() => {
-            this.setupWeb3AndSetContract();
-            if (
-                this.state.connectedWalletAddress !==
-                checksumAddr(window.ethereum.selectedAddress)
-            ) {
-                this.setState({
-                    connectedWalletAddress: checksumAddr(
-                        window.ethereum.selectedAddress
-                    ),
-                });
-            }
-        });
+        window.ethereum
+            .enable()
+            .then(() => {
+                this.setupWeb3AndSetContract();
+                if (
+                    this.state.connectedWalletAddress !==
+                    checksumAddr(window.ethereum.selectedAddress)
+                ) {
+                    this.setState({
+                        connectedWalletAddress: checksumAddr(
+                            window.ethereum.selectedAddress
+                        ),
+                    });
+                }
+            })
+            .finally(() => {
+                this.setState({ isLoading: false });
+            });
     };
 
     render() {

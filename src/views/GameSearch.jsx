@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Button, Flash } from "rimble-ui";
 import Chessboard from "chessboardjsx";
-import { checksumAddr, getAddressBlockie } from "../ethUtils";
+import { checksumAddr, getAddressBlockie } from "../utils/eth";
 import AcceptGameModal from "../components/acceptGameModal";
 
 function GameSearch({
