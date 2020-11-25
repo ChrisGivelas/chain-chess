@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Box, Button, Modal, Card, Heading, Flex } from "rimble-ui";
 import { useHistory } from "react-router-dom";
-import { parseResultToGame } from "../utils/game_parsing";
 import { getGameByOpponent } from "../standardGame";
 import ButtonWithLoader from "../components/buttonWithLoader";
 
@@ -40,11 +39,10 @@ function AcceptGameModal({
                         )
                     )
                     .then((game) => {
-                        var parsedGame = parseResultToGame(game);
-                        console.log(parsedGame);
-                        history.push(`/game/${parsedGame.gameId}`);
+                        console.log(game);
                         setIsLoading(false);
                         closeModal();
+                        history.push(`/game/${game.gameId}`);
                     });
             });
         }

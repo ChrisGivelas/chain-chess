@@ -57,8 +57,28 @@ h6 {
     color: black;
     font-weight: bold;
     display: inline-block;
+    vertical-align: bottom;
+    font-size: 1rem;
 }
 
 .blurred {
     filter: blur(4px);
+}
+
+.game-view {
+    width: 100vw;
+    height: 100vh;
+}
+
+.game-players {
+    width: 100%;
+    height: fit-content;
+    display: flex;
+    justify-content: space-between;
+}
+
+.game {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }

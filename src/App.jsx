@@ -2,7 +2,7 @@ import React from "react";
 import "./App.css";
 import { updateWeb3AndReturnWeb3Provider, checksumAddr } from "./utils/eth";
 import { getStandardGameContract } from "./standardGame";
-import { BrowserRouter, Route, Switch, Redirect } from "react-router-dom";
+import { BrowserRouter, Route, Switch } from "react-router-dom";
 import { PrivateRoute } from "./utils/route";
 import Landing from "./views/Landing";
 import ActiveGames from "./views/ActiveGames";
@@ -18,6 +18,7 @@ class App extends React.Component {
             connectedWalletAddress: null,
             usersSearching: null,
             isLoading: false,
+            isConnected: true,
         };
     }
 
@@ -111,11 +112,11 @@ class App extends React.Component {
             ...this.state,
         };
 
-        const isAuthenticated = !needToConnectWallet && contractLoaded;
+        const dappReady = !needToConnectWallet && contractLoaded;
 
         const privateRouteProps = {
             redirectPath: "/",
-            isAuthenticated,
+            isAuthenticated: dappReady,
         };
 
         // console.log("viewProps: ", viewProps);
@@ -125,24 +126,14 @@ class App extends React.Component {
             <div className="App">
                 <BrowserRouter>
                     <Switch>
-                        <Route
+                        <PrivateRoute
                             exact
                             path="/"
-                            render={({ location }) =>
-                                !isAuthenticated ? (
-                                    <Landing
-                                        connectWallet={this.connectWallet}
-                                    />
-                                ) : (
-                                    <Redirect
-                                        to={{
-                                            pathname: "/search",
-                                            state: { from: location },
-                                        }}
-                                    />
-                                )
-                            }
-                        ></Route>
+                            isAuthenticated={!dappReady}
+                            redirectPath="/search"
+                        >
+                            <Landing connectWallet={this.connectWallet} />
+                        </PrivateRoute>
                         <PrivateRoute path="/search" {...privateRouteProps}>
                             <GameSearch {...viewProps} />
                         </PrivateRoute>
@@ -155,16 +146,13 @@ class App extends React.Component {
                         <PrivateRoute path="/profile" {...privateRouteProps}>
                             <Profile {...viewProps} />
                         </PrivateRoute>
-                        <PrivateRoute
-                            path="/game/:gameId"
-                            {...privateRouteProps}
-                        >
+                        <Route path="/game/:gameId">
                             <Game
                                 connectedWalletAddress={
                                     this.state.connectedWalletAddress
                                 }
                             />
-                        </PrivateRoute>
+                        </Route>
                     </Switch>
                 </BrowserRouter>
             </div>

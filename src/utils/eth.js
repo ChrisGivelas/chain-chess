@@ -1,5 +1,4 @@
 import Web3 from "web3";
-import TruffleContract from "@truffle/contract";
 import { Blockie } from "rimble-ui";
 import randomColor from "randomcolor";
 
@@ -12,6 +11,7 @@ export const updateWeb3AndReturnWeb3Provider = () => {
     }
 
     window.web3 = new Web3(web3Provider);
+    window.web3.eth.handleRevert = true;
 
     return web3Provider;
 };

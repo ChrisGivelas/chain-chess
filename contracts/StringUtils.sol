@@ -1,20 +1,18 @@
 pragma solidity ^0.6.0;
 
 library StringUtils {
-
-
     function strConcat(string memory _a, string memory _b) internal pure returns (string memory _concatenatedString) {
-        string[] memory strings;
+        string[] memory strings = new string[](2);
 
         strings[0] = _a;
         strings[1] = _b;
 
-        return strConcat(strings);
+        return strConcatArray(strings);
     }
 
     // Adapted from https://github.com/provable-things/ethereum-api/blob/9f34daaa550202c44f48cdee7754245074bde65d/oraclizeAPI_0.5.sol#L959
-    function strConcat(string memory _a, string memory _b, string memory _c, string memory _d, string memory _e, string memory _f, string memory _g) internal pure returns (string memory _concatenatedString) {
-        string[] memory strings;
+    function strConcat(string memory _a, string memory _b, string memory _c, string memory _d, string memory _e, string memory _f) internal pure returns (string memory _concatenatedString) {
+        string[] memory strings = new string[](6);
 
         strings[0] = _a;
         strings[1] = _b;
@@ -22,15 +20,14 @@ library StringUtils {
         strings[3] = _d;
         strings[4] = _e;
         strings[5] = _f;
-        strings[6] = _g;
 
-        return strConcat(strings);
+        return strConcatArray(strings);
     }
 
-    function strConcat(string[] memory strings) internal pure returns (string memory _concatenatedString) {
+    function strConcatArray(string[] memory strings) internal pure returns (string memory) {
         if(strings.length == 0) return "";
 
-        bytes[] memory byte_strings;
+        bytes[] memory byte_strings = new bytes[](strings.length);
         uint length = 0;
         for(uint i = 0; i < strings.length; i++) {
             byte_strings[i] = bytes(strings[i]);
