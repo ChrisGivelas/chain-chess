@@ -10,6 +10,16 @@ library StringUtils {
         return strConcatArray(strings);
     }
 
+    function strConcat(string memory _a, string memory _b, string memory _c) internal pure returns (string memory _concatenatedString) {
+        string[] memory strings = new string[](3);
+
+        strings[0] = _a;
+        strings[1] = _b;
+        strings[2] = _c;
+
+        return strConcatArray(strings);
+    }
+
     // Adapted from https://github.com/provable-things/ethereum-api/blob/9f34daaa550202c44f48cdee7754245074bde65d/oraclizeAPI_0.5.sol#L959
     function strConcat(string memory _a, string memory _b, string memory _c, string memory _d, string memory _e, string memory _f) internal pure returns (string memory _concatenatedString) {
         string[] memory strings = new string[](6);

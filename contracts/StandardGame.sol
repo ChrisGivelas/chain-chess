@@ -1,11 +1,26 @@
 pragma solidity ^0.6.0;
 
-import "./BaseGame.sol";
+import "./Chess.sol";
+import "./StringUtils.sol";
 
-contract StandardGame is BaseGame {
+contract StandardGame {
     address[] public searchingForNewGame;
+    uint maxGamesPerUser;
+    uint gameCount;
+    mapping(uint => Chess.Game) games;
+    mapping(address => PlayerProfile) players;
 
-    constructor(uint maxGames) public BaseGame(maxGames) {}
+    struct PlayerProfile {
+        uint[] activeGames;
+        uint[] completedGames;
+        uint wins;
+        uint losses;
+    }
+
+    constructor(uint maxGames) public {
+        maxGamesPerUser = maxGames;
+        gameCount = 0;
+    }
 
     modifier maxGamesNotReached(address playerAddress) {
         require(players[playerAddress].activeGames.length < maxGamesPerUser, "User already has the maximum number of games started");
@@ -34,7 +49,7 @@ contract StandardGame is BaseGame {
         require(userIsSearching(otherPlayer), "Game does not exist");
         require(msg.sender != otherPlayer, "Two different players are required to start a new game");
         
-        Game storage newGame = games[gameCount];
+        Chess.Game storage newGame = games[gameCount];
 
         initializeGame(gameCount, msg.sender, otherPlayer, newGame);
         
@@ -60,16 +75,16 @@ contract StandardGame is BaseGame {
         }
     }
 
-    function initializeGame(uint gameId, address player1Address, address player2Address, Game storage newGame) internal {
-        Board storage board = newGame.board;
-        board.playerSides[uint(PlayerSide.White)] = player1Address;
-        board.playerSides[uint(PlayerSide.Black)] = player2Address;
+    function initializeGame(uint gameId, address player1Address, address player2Address, Chess.Game storage newGame) internal {
+        Chess.Board storage board = newGame.board;
+        board.playerSides[uint(Chess.PlayerSide.White)] = player1Address;
+        board.playerSides[uint(Chess.PlayerSide.Black)] = player2Address;
 
-        board.players[player1Address].side = PlayerSide.White;
+        board.players[player1Address].side = Chess.PlayerSide.White;
         board.players[player1Address].kingRankPos = 0;
         board.players[player1Address].kingFilePos = 4;
 
-        board.players[player2Address].side = PlayerSide.Black;
+        board.players[player2Address].side = Chess.PlayerSide.Black;
         board.players[player2Address].kingRankPos = 7;
         board.players[player2Address].kingFilePos = 4;
 
@@ -80,38 +95,39 @@ contract StandardGame is BaseGame {
         }
 
         newGame.gameId = gameId;
-        newGame.currentTurn = PlayerSide.White;
+        newGame.currentTurn = Chess.PlayerSide.White;
         newGame.started = true;
         newGame.ended = false;
         newGame.winner = address(0);
         newGame.moveHistory = "";
+        newGame.moveCount = 0;
     }
 
-    function setInitialPositionForPiece(uint rank, uint file, BoardSquare storage square) internal returns (Piece memory) {
-        Piece memory temp;
+    function setInitialPositionForPiece(uint rank, uint file, Chess.BoardSquare storage square) internal returns (Chess.Piece memory) {
+        Chess.Piece memory temp;
 
         if(rank == 0) {
-            if(file == 0) temp = Piece(PieceType.Rook, PlayerSide.White, false);
-            if(file == 1) temp = Piece(PieceType.Knight, PlayerSide.White, false);
-            if(file == 2) temp = Piece(PieceType.Bishop, PlayerSide.White, false);
-            if(file == 3) temp = Piece(PieceType.Queen, PlayerSide.White, false);
-            if(file == 4) temp = Piece(PieceType.King, PlayerSide.White, false);
-            if(file == 5) temp = Piece(PieceType.Bishop, PlayerSide.White, false);
-            if(file == 6) temp = Piece(PieceType.Knight, PlayerSide.White, false);
-            if(file == 7) temp = Piece(PieceType.Rook, PlayerSide.White, false);
+            if(file == 0) temp = Chess.Piece(Chess.PieceType.Rook, Chess.PlayerSide.White, false);
+            if(file == 1) temp = Chess.Piece(Chess.PieceType.Knight, Chess.PlayerSide.White, false);
+            if(file == 2) temp = Chess.Piece(Chess.PieceType.Bishop, Chess.PlayerSide.White, false);
+            if(file == 3) temp = Chess.Piece(Chess.PieceType.Queen, Chess.PlayerSide.White, false);
+            if(file == 4) temp = Chess.Piece(Chess.PieceType.King, Chess.PlayerSide.White, false);
+            if(file == 5) temp = Chess.Piece(Chess.PieceType.Bishop, Chess.PlayerSide.White, false);
+            if(file == 6) temp = Chess.Piece(Chess.PieceType.Knight, Chess.PlayerSide.White, false);
+            if(file == 7) temp = Chess.Piece(Chess.PieceType.Rook, Chess.PlayerSide.White, false);
         } else if(rank == 1) {
-            temp = Piece(PieceType.Pawn, PlayerSide.White, false);
+            temp = Chess.Piece(Chess.PieceType.Pawn, Chess.PlayerSide.White, false);
         } else if(rank == 6) {
-            temp = Piece(PieceType.Pawn, PlayerSide.Black, false);
+            temp = Chess.Piece(Chess.PieceType.Pawn, Chess.PlayerSide.Black, false);
         } else if(rank == 7) {
-            if(file == 0) temp = Piece(PieceType.Rook, PlayerSide.Black, false);
-            if(file == 1) temp = Piece(PieceType.Knight, PlayerSide.Black, false);
-            if(file == 2) temp = Piece(PieceType.Bishop, PlayerSide.Black, false);
-            if(file == 3) temp = Piece(PieceType.Queen, PlayerSide.Black, false);
-            if(file == 4) temp = Piece(PieceType.King, PlayerSide.Black, false);
-            if(file == 5) temp = Piece(PieceType.Bishop, PlayerSide.Black, false);
-            if(file == 6) temp = Piece(PieceType.Knight, PlayerSide.Black, false);
-            if(file == 7) temp = Piece(PieceType.Rook, PlayerSide.Black, false);
+            if(file == 0) temp = Chess.Piece(Chess.PieceType.Rook, Chess.PlayerSide.Black, false);
+            if(file == 1) temp = Chess.Piece(Chess.PieceType.Knight, Chess.PlayerSide.Black, false);
+            if(file == 2) temp = Chess.Piece(Chess.PieceType.Bishop, Chess.PlayerSide.Black, false);
+            if(file == 3) temp = Chess.Piece(Chess.PieceType.Queen, Chess.PlayerSide.Black, false);
+            if(file == 4) temp = Chess.Piece(Chess.PieceType.King, Chess.PlayerSide.Black, false);
+            if(file == 5) temp = Chess.Piece(Chess.PieceType.Bishop, Chess.PlayerSide.Black, false);
+            if(file == 6) temp = Chess.Piece(Chess.PieceType.Knight, Chess.PlayerSide.Black, false);
+            if(file == 7) temp = Chess.Piece(Chess.PieceType.Rook, Chess.PlayerSide.Black, false);
         }
 
         square.piece.pieceType = temp.pieceType;
@@ -124,42 +140,46 @@ contract StandardGame is BaseGame {
     }
 
     function movePiece(uint gameId, uint prevRankPos, uint prevFilePos, uint newRankPos, uint newFilePos) public returns (string memory) {
-        require(games[gameId].started, "Game does not exist.");
-        require(!games[gameId].ended, "Game is done.");
-        require(games[gameId].board.players[msg.sender].side != PlayerSide.None, "User is not a part of this game.");
+        Chess.Game storage game = games[gameId];
+        Chess.Player storage currentPlayer = game.board.players[msg.sender];
+        Chess.Player storage otherPlayer = game.board.players[game.board.playerSides[uint(Chess.getOtherSide(currentPlayer.side))]];
+        Chess.BoardSquare storage selectedSquare = game.board.squares[prevRankPos][prevFilePos];
+        Chess.BoardSquare storage squareToMoveTo = game.board.squares[newRankPos][newFilePos];
 
-        Game storage game = games[gameId];
-        Player storage currentPlayer = game.board.players[msg.sender];
-        BoardSquare storage selectedSquare = game.board.squares[prevRankPos][prevFilePos];
-        BoardSquare storage squareToMoveTo = game.board.squares[newRankPos][newFilePos];
-
+        require(game.started, "Game does not exist.");
+        require(currentPlayer.side != Chess.PlayerSide.None, "User is not a part of this game.");
+        require(!game.ended, "Game is done.");
+        require(currentPlayer.side == game.currentTurn, "Not this players turn!");
         require(selectedSquare.isOccupied, "No piece found here");
+        require(prevRankPos != newRankPos || prevFilePos != newFilePos, "No move was made");
         require(selectedSquare.piece.side == currentPlayer.side, "Piece is not owned by player");
 
-        validateMove(prevRankPos, prevFilePos, newRankPos, newFilePos, selectedSquare.piece, game.board);
+        Chess.validateMove(prevRankPos, prevFilePos, newRankPos, newFilePos, selectedSquare.piece, game.board);
 
         bool pieceWasCaptured = updatePieceLocations(game, selectedSquare, squareToMoveTo);
-        updateEndgameInfo(game, newRankPos, newFilePos);
+        updateEndgameInfo(game, newRankPos, newFilePos, currentPlayer, otherPlayer, squareToMoveTo);
 
         string memory moveHistoryEntry = getMoveHistoryEntry(prevRankPos, prevFilePos, newRankPos, newFilePos, uint(squareToMoveTo.piece.pieceType), pieceWasCaptured);
 
-        game.moveHistory = StringUtils.strConcat(game.moveHistory, moveHistoryEntry);
+        game.moveHistory = game.moveCount > 0 ? StringUtils.strConcat(game.moveHistory, ",", moveHistoryEntry) : moveHistoryEntry;
+
+        game.moveCount++;
 
         return moveHistoryEntry;
     }
 
-    function updatePieceLocations(Game storage game, BoardSquare storage selectedSquare, BoardSquare storage squareToMoveTo) internal returns(bool) {
+    function updatePieceLocations(Chess.Game storage game, Chess.BoardSquare storage selectedSquare, Chess.BoardSquare storage squareToMoveTo) internal returns(bool) {
         bool pieceWasCaptured = false;
         // If a piece was eliminated, add it to the capturedPieces array
         if(squareToMoveTo.isOccupied) {
-            game.board.capturedPieces.push(Piece({pieceType: squareToMoveTo.piece.pieceType, side: squareToMoveTo.piece.side, hasMadeInitialMove: squareToMoveTo.piece.hasMadeInitialMove}));
+            game.board.capturedPieces.push(Chess.Piece({pieceType: squareToMoveTo.piece.pieceType, side: squareToMoveTo.piece.side, hasMadeInitialMove: squareToMoveTo.piece.hasMadeInitialMove}));
             pieceWasCaptured = true;
         }
 
         // Remove piece from previous location...
         selectedSquare.isOccupied = false;
-        squareToMoveTo.piece.pieceType = PieceType.None;
-        squareToMoveTo.piece.side = PlayerSide.None;
+        squareToMoveTo.piece.pieceType = Chess.PieceType.None;
+        squareToMoveTo.piece.side = Chess.PlayerSide.None;
         squareToMoveTo.piece.hasMadeInitialMove = false;
 
         // ...and move it to new square
@@ -171,25 +191,21 @@ contract StandardGame is BaseGame {
         return pieceWasCaptured;
     }
 
-    function updateEndgameInfo(Game storage game, uint newRankPos, uint newFilePos) internal {
-        Player storage currentPlayer = game.board.players[msg.sender];
-        Player storage otherPlayer = game.board.players[game.board.playerSides[uint(getOtherSide(currentPlayer.side))]];
-        BoardSquare storage squareToMoveTo = game.board.squares[newRankPos][newFilePos];
-
+    function updateEndgameInfo(Chess.Game storage game, uint newRankPos, uint newFilePos, Chess.Player storage currentPlayer, Chess.Player storage otherPlayer, Chess.BoardSquare storage squareToMoveTo) internal {
         // If this move does not take the player's king out of check, then revert this move
-        if(game.board.inCheck == currentPlayer.side) {
-            require(!positionIsThreatened(currentPlayer.kingRankPos, currentPlayer.kingFilePos, game.board, currentPlayer.side), "Player is in check. Player must protect king");
-            game.board.inCheck = PlayerSide.None;
+        if(game.inCheck == currentPlayer.side) {
+            require(!Chess.positionIsThreatened(currentPlayer.kingRankPos, currentPlayer.kingFilePos, game.board, currentPlayer.side), "Player is in check. Player must protect king");
+            game.inCheck = Chess.PlayerSide.None;
         }
 
         // Check if the game is done
-        (bool inCheck, bool checkMated) = checkKingState(otherPlayer.kingRankPos, otherPlayer.kingFilePos, game, otherPlayer);
+        (bool inCheck, bool checkMated) = Chess.checkKingState(otherPlayer.kingRankPos, otherPlayer.kingFilePos, game, otherPlayer);
 
         if(inCheck) {
-            game.board.inCheck = otherPlayer.side;
+            game.inCheck = otherPlayer.side;
         }
 
-        if(squareToMoveTo.piece.pieceType == PieceType.King) {
+        if(squareToMoveTo.piece.pieceType == Chess.PieceType.King) {
             currentPlayer.kingRankPos = newRankPos;
             currentPlayer.kingFilePos = newFilePos;
         }
@@ -197,9 +213,97 @@ contract StandardGame is BaseGame {
         if(checkMated) {
             game.ended = true;
             game.winner = msg.sender;
-        } else {
-            game.currentTurn = otherPlayer.side;
         }
+
+        game.currentTurn = otherPlayer.side;
+    }
+
+    function getBasicInfoForGameByGameId(uint gameIdToSearchWith) public view returns(string memory moveHistory, address whiteAddress, address blackAddress, Chess.PlayerSide currentTurn, bool started) {
+        require(gameIdToSearchWith <= gameCount, "Game does not exist");
+        require(games[gameIdToSearchWith].board.players[msg.sender].side != Chess.PlayerSide.None, "User is not a part of this game.");
+
+        Chess.Game storage game = games[gameIdToSearchWith];
+
+        moveHistory = game.moveHistory;
+        whiteAddress = game.board.playerSides[uint(Chess.PlayerSide.White)];
+        blackAddress = game.board.playerSides[uint(Chess.PlayerSide.Black)];
+        currentTurn = game.currentTurn;
+        started = game.started;
+    }
+
+    function getBasicInfoForGameByOpponentAddress(address opponentAddressToSearchWith) public view returns(string memory moveHistory, address whiteAddress, address blackAddress, Chess.PlayerSide currentTurn, bool started) {
+        uint[] storage activeGames = players[msg.sender].activeGames;
+
+        for(uint i = 0; i < activeGames.length; i++) {
+            if(games[activeGames[i]].board.players[opponentAddressToSearchWith].side != Chess.PlayerSide.None) {
+                Chess.Game storage game = games[activeGames[i]];
+
+                moveHistory = game.moveHistory;
+                whiteAddress = game.board.playerSides[uint(Chess.PlayerSide.White)];
+                blackAddress = game.board.playerSides[uint(Chess.PlayerSide.Black)];
+                currentTurn = game.currentTurn;
+                started = game.started;
+
+                break;
+            }
+        }
+    }
+
+    function getEndgameInfoForGameByGameId(uint gameIdToSearchWith) public view returns(Chess.PlayerSide inCheck, bool ended, address winner, uint moveCount) {
+        require(gameIdToSearchWith <= gameCount, "Game does not exist");
+        require(games[gameIdToSearchWith].board.players[msg.sender].side != Chess.PlayerSide.None, "User is not a part of this game.");
+
+        Chess.Game storage game = games[gameIdToSearchWith];
+
+        inCheck = game.inCheck;
+        ended = game.ended;
+        winner = game.winner;
+        moveCount = game.moveCount;
+    }
+
+    function getEndgameInfoForGameByOpponentAddress(address opponentAddressToSearchWith) public view returns(Chess.PlayerSide inCheck, bool ended, address winner, uint moveCount) {
+        uint[] storage activeGames = players[msg.sender].activeGames;
+
+        for(uint i = 0; i < activeGames.length; i++) {
+            if(games[activeGames[i]].board.players[opponentAddressToSearchWith].side != Chess.PlayerSide.None) {
+                require(games[activeGames[i]].board.players[msg.sender].side != Chess.PlayerSide.None, "User is not a part of this game.");
+
+                Chess.Game storage game = games[activeGames[i]];
+
+                inCheck = game.inCheck;
+                ended = game.ended;
+                winner = game.winner;
+                moveCount = game.moveCount;
+
+                break;
+            }
+        }
+    }
+    
+    function getActiveGames() public view returns(address[] memory opponentAddresses, uint[] memory gameIds) {
+        uint[] storage activeGames = players[msg.sender].activeGames;
+        
+        for(uint i = 0; i < activeGames.length; i++) {
+            Chess.Game storage game = games[activeGames[i]];
+
+            opponentAddresses[i] = game.board.playerSides[uint(Chess.getOtherSide(game.board.players[msg.sender].side))];
+            gameIds[i] = game.gameId;
+        }
+    }
+
+    string[8] fileIdMapping = ["a","b","c","d","e","f","g","h"];
+    string[8] rankIdMapping = ["1","2","3","4","5","6","7","8"];
+    string[7] pieceIdMapping = ["NONE", "p", "n", "b", "r", "q", "k" ];
+
+    function getMoveHistoryEntry(uint prevRankPos, uint prevFilePos, uint newRankPos, uint newFilePos, uint pieceEnumValue, bool isCapture) internal view returns(string memory) {
+        return StringUtils.strConcat(
+            pieceIdMapping[pieceEnumValue],
+            fileIdMapping[prevFilePos],
+            rankIdMapping[prevRankPos],
+            isCapture ? "x" : "",
+            fileIdMapping[newFilePos],
+            rankIdMapping[newRankPos]
+        );
     }
 
     function getUsersSearchingForGame() public view returns(address[] memory) {
