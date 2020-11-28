@@ -6,7 +6,6 @@ export const RANK_MAPPING = ["8", "7", "6", "5", "4", "3", "2", "1"];
 const RANK_MAPPING_REVERSED = ["1", "2", "3", "4", "5", "6", "7", "8"];
 export const getRankIndexFromVal = (i) =>
     RANK_MAPPING_REVERSED.findIndex((r) => {
-        console.log(r, i);
         return r === i;
     });
 
@@ -14,20 +13,22 @@ export const FILE_MAPPING = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 export const getFileIndexFromVal = (i) =>
     FILE_MAPPING.findIndex((f) => {
-        console.log(f, i);
         return f === i;
     });
 
-export const getGameChessboard = (game) => {
-    var chess = new Chess();
+export const getGameChessboard = (moveHistory = "", chess = null) => {
+    var c;
 
-    if (game.moveHistory.length > 0) {
-        game.moveHistory.split(",").forEach((moveEntry) => {
-            chess.move(moveEntry, { sloppy: true });
+    if (chess !== null) c = chess;
+    else c = new Chess();
+
+    if (moveHistory.length > 0) {
+        moveHistory.split(",").forEach((moveEntry) => {
+            c.move(moveEntry, { sloppy: true });
         });
     }
 
-    return chess;
+    return { chess: c, positions: getPositionObjectFromChessboard(c) };
 };
 
 export const getPositionObjectFromChessboard = (chess) => {

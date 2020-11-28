@@ -51,7 +51,7 @@ contract TestStandardGame {
         Assert.equal(errMsg1, "", "Error message shouldn't exist");
         Assert.equal(standardGame.getUsersSearchingForGame().length, 2, "Less players should be searching now");
 
-        (string memory moveHistory, address whiteAddress, address blackAddress, uint currentTurn, bool started, string memory errMsg2) = player1.getBasicInfoForGameByGameId(newGameId);
+        (uint gameId, string memory moveHistory, address whiteAddress, address blackAddress, uint currentTurn, bool started, string memory errMsg2) = player1.getBasicInfoForGameByGameId(newGameId);
 
         Assert.equal(errMsg2, "", "Error message shouldn't exist");
         Assert.isTrue(started, "Game should have started");
@@ -99,6 +99,22 @@ contract TestStandardGame {
         Assert.equal(errMsg1, "Not this players turn!", "Incorrect error message");
     }
 
+    function testGetActiveGames() public {
+        (address[] memory opponentAddresses, uint[] memory gameIds, string memory errMsg) = player1.getActiveGames();
+
+        Assert.equal(errMsg, "", "Error message shouldn't exist");
+        Assert.equal(opponentAddresses.length, 1, "Incorrect number of active games");
+        Assert.equal(gameIds.length, 1, "Incorrect number of active games");
+        Assert.equal(opponentAddresses[0], address(player2), "Wrong opponent address");
+
+        (opponentAddresses, gameIds, errMsg) = player2.getActiveGames();
+
+        Assert.equal(errMsg, "", "Error message shouldn't exist");
+        Assert.equal(opponentAddresses.length, 1, "Incorrect number of active games");
+        Assert.equal(gameIds.length, 1, "Incorrect number of active games");
+        Assert.equal(opponentAddresses[0], address(player1), "Wrong opponent address");
+    }
+
     function testMovePiece_queensSkipsOverOwnPiece_throwsError() public {
         // cheeky white queen wants to hop over pawn to sneak attack black queen!? (from d1 to d5)
         (string memory move1, string memory errMsg1) = player1.movePiece(testGameId1, 0, 3, 4, 3);
@@ -113,7 +129,7 @@ contract TestStandardGame {
         Assert.equal(errMsg1, "", "Error message 1 shouldn't exist");
         Assert.equal(move1, "bf1b5", "Move entry is incorrect");
 
-        (string memory moveHistory, address whiteAddress, address blackAddress, uint currentTurn, bool started,) = player1.getBasicInfoForGameByGameId(testGameId1);
+        (uint gameId, string memory moveHistory, address whiteAddress, address blackAddress, uint currentTurn, bool started,) = player1.getBasicInfoForGameByGameId(testGameId1);
         (uint inCheckSide, bool ended, address winner, uint moveCount,) = player1.getEndgameInfoForGameByGameId(testGameId1);
 
         Assert.equal(moveHistory, "pe2e4,pd7d5,pe4xd5,qd8xd5,bf1b5", "Move history incorrect");
@@ -145,7 +161,7 @@ contract TestStandardGame {
         Assert.equal(errMsg4, "", "Error message 4 shouldn't exist");
         Assert.equal(move4, "qb5xe2", "Move entry is incorrect");
 
-        (string memory moveHistory, address whiteAddress, address blackAddress, uint currentTurn, bool started,) = player1.getBasicInfoForGameByGameId(testGameId1);
+        (uint gameId, string memory moveHistory, address whiteAddress, address blackAddress, uint currentTurn, bool started,) = player1.getBasicInfoForGameByGameId(testGameId1);
         (uint inCheckSide, bool ended, address winner, uint moveCount,) = player1.getEndgameInfoForGameByGameId(testGameId1);
 
         Assert.equal(moveHistory, "pe2e4,pd7d5,pe4xd5,qd8xd5,bf1b5,qd5xb5,qd1g4,bc8xg4,ng1e2,qb5xe2", "Move history incorrect");

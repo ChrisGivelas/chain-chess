@@ -10,6 +10,8 @@ contract StandardGame {
     mapping(uint => Chess.Game) games;
     mapping(address => PlayerProfile) players;
 
+    event MovePiece(uint indexed gameId, address indexed player, string moveHistory);
+
     struct PlayerProfile {
         uint[] activeGames;
         uint[] completedGames;
@@ -35,7 +37,7 @@ contract StandardGame {
         return true;
     }
 
-    function userIsSearching(address playerAddress) internal view returns(bool) {
+    function userIsSearching(address playerAddress) public view returns(bool) {
         for(uint i = 0; i < searchingForNewGame.length; i++) {
             if(searchingForNewGame[i] == playerAddress) {
                 return true;
@@ -165,6 +167,8 @@ contract StandardGame {
 
         game.moveCount++;
 
+        emit MovePiece(gameId, msg.sender, game.moveHistory);
+
         return moveHistoryEntry;
     }
 
@@ -213,40 +217,49 @@ contract StandardGame {
         if(checkMated) {
             game.ended = true;
             game.winner = msg.sender;
-        }
 
-        game.currentTurn = otherPlayer.side;
+            PlayerProfile storage cp = players[msg.sender];
+
+            for(uint i = 0; i < cp.activeGames.length; i++) {
+                if(cp.activeGames[i] == game.gameId) {
+                    if(cp.activeGames.length > 1) {
+                        cp.activeGames[i] = cp.activeGames[cp.activeGames.length - 1];
+                    }
+                    cp.activeGames.pop();
+                }
+            }
+            cp.completedGames.push(game.gameId);
+            cp.wins++;
+
+            PlayerProfile storage op = players[game.board.playerSides[uint(Chess.getOtherSide(currentPlayer.side))]];
+
+            for(uint i = 0; i < op.activeGames.length; i++) {
+                if(op.activeGames[i] == game.gameId) {
+                    if(op.activeGames.length > 1) {
+                        op.activeGames[i] = op.activeGames[op.activeGames.length - 1];
+                    }
+                    op.activeGames.pop();
+                }
+            }
+            op.completedGames.push(game.gameId);
+            op.losses++;
+        } else {
+            game.currentTurn = otherPlayer.side;
+        }
     }
 
-    function getBasicInfoForGameByGameId(uint gameIdToSearchWith) public view returns(string memory moveHistory, address whiteAddress, address blackAddress, Chess.PlayerSide currentTurn, bool started) {
+    function getBasicInfoForGameByGameId(uint gameIdToSearchWith) public view returns(uint gameId, string memory moveHistory, address whiteAddress, address blackAddress, Chess.PlayerSide currentTurn, bool started) {
         require(gameIdToSearchWith <= gameCount, "Game does not exist");
         require(games[gameIdToSearchWith].board.players[msg.sender].side != Chess.PlayerSide.None, "User is not a part of this game.");
 
         Chess.Game storage game = games[gameIdToSearchWith];
 
+        gameId = gameIdToSearchWith;
         moveHistory = game.moveHistory;
         whiteAddress = game.board.playerSides[uint(Chess.PlayerSide.White)];
         blackAddress = game.board.playerSides[uint(Chess.PlayerSide.Black)];
         currentTurn = game.currentTurn;
         started = game.started;
-    }
-
-    function getBasicInfoForGameByOpponentAddress(address opponentAddressToSearchWith) public view returns(string memory moveHistory, address whiteAddress, address blackAddress, Chess.PlayerSide currentTurn, bool started) {
-        uint[] storage activeGames = players[msg.sender].activeGames;
-
-        for(uint i = 0; i < activeGames.length; i++) {
-            if(games[activeGames[i]].board.players[opponentAddressToSearchWith].side != Chess.PlayerSide.None) {
-                Chess.Game storage game = games[activeGames[i]];
-
-                moveHistory = game.moveHistory;
-                whiteAddress = game.board.playerSides[uint(Chess.PlayerSide.White)];
-                blackAddress = game.board.playerSides[uint(Chess.PlayerSide.Black)];
-                currentTurn = game.currentTurn;
-                started = game.started;
-
-                break;
-            }
-        }
     }
 
     function getEndgameInfoForGameByGameId(uint gameIdToSearchWith) public view returns(Chess.PlayerSide inCheck, bool ended, address winner, uint moveCount) {
@@ -259,6 +272,25 @@ contract StandardGame {
         ended = game.ended;
         winner = game.winner;
         moveCount = game.moveCount;
+    }
+
+    function getBasicInfoForGameByOpponentAddress(address opponentAddressToSearchWith) public view returns(uint gameId, string memory moveHistory, address whiteAddress, address blackAddress, Chess.PlayerSide currentTurn, bool started) {
+        uint[] storage activeGames = players[msg.sender].activeGames;
+
+        for(uint i = 0; i < activeGames.length; i++) {
+            if(games[activeGames[i]].board.players[opponentAddressToSearchWith].side != Chess.PlayerSide.None) {
+                Chess.Game storage game = games[activeGames[i]];
+
+                gameId = activeGames[i];
+                moveHistory = game.moveHistory;
+                whiteAddress = game.board.playerSides[uint(Chess.PlayerSide.White)];
+                blackAddress = game.board.playerSides[uint(Chess.PlayerSide.Black)];
+                currentTurn = game.currentTurn;
+                started = game.started;
+
+                break;
+            }
+        }
     }
 
     function getEndgameInfoForGameByOpponentAddress(address opponentAddressToSearchWith) public view returns(Chess.PlayerSide inCheck, bool ended, address winner, uint moveCount) {
@@ -282,6 +314,9 @@ contract StandardGame {
     
     function getActiveGames() public view returns(address[] memory opponentAddresses, uint[] memory gameIds) {
         uint[] storage activeGames = players[msg.sender].activeGames;
+
+        opponentAddresses = new address[](activeGames.length);
+        gameIds = new uint[](activeGames.length);
         
         for(uint i = 0; i < activeGames.length; i++) {
             Chess.Game storage game = games[activeGames[i]];
@@ -308,5 +343,13 @@ contract StandardGame {
 
     function getUsersSearchingForGame() public view returns(address[] memory) {
         return searchingForNewGame;
+    }
+
+    function getPlayerProfile() public view returns(uint[] memory activeGames, uint[] memory completedGames, uint wins, uint losses) {
+        PlayerProfile storage profile = players[msg.sender];
+        activeGames = profile.activeGames;
+        completedGames = profile.completedGames;
+        wins = profile.wins;
+        losses = profile.losses;
     }
 }

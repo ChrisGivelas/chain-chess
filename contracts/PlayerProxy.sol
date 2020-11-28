@@ -34,8 +34,9 @@ contract PlayerProxy {
         }
     }
 
-    function getBasicInfoForGameByGameId(uint gameIdToSearchFor) public view returns (string memory moveHistory, address whiteAddress, address blackAddress, uint currentTurn, bool started, string memory errMsg) {
-        try StandardGame(standardGameAddress).getBasicInfoForGameByGameId(gameIdToSearchFor) returns (string memory game_moveHistory, address game_whiteAddress, address game_blackAddress, Chess.PlayerSide game_currentTurn, bool game_started) {
+    function getBasicInfoForGameByGameId(uint gameIdToSearchFor) public view returns (uint gameId, string memory moveHistory, address whiteAddress, address blackAddress, uint currentTurn, bool started, string memory errMsg) {
+        try StandardGame(standardGameAddress).getBasicInfoForGameByGameId(gameIdToSearchFor) returns (uint game_gameId, string memory game_moveHistory, address game_whiteAddress, address game_blackAddress, Chess.PlayerSide game_currentTurn, bool game_started) {
+            gameId = game_gameId;
             moveHistory = game_moveHistory;
             whiteAddress = game_whiteAddress;
             blackAddress = game_blackAddress;
@@ -52,6 +53,15 @@ contract PlayerProxy {
             ended = game_ended;
             winner = game_winner;
             moveCount = game_moveCount;
+        } catch Error(string memory reason) {
+            errMsg = reason;
+        }
+    }
+
+    function getActiveGames() public view returns (address[] memory opponentAddresses, uint[] memory gameIds, string memory errMsg) {
+        try StandardGame(standardGameAddress).getActiveGames() returns (address[] memory addrs, uint[] memory ids) {
+            opponentAddresses = addrs;
+            gameIds = ids;
         } catch Error(string memory reason) {
             errMsg = reason;
         }

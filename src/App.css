@@ -1,12 +1,41 @@
 .App {
     text-align: center;
     background-color: #282c34;
-    min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     font-size: calc(10px + 2vmin);
     color: white;
+    height: 100vh;
+}
+
+.main {
+    width: 100%;
+    height: 90%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.nav {
+    width: 40%;
+    height: 50px;
+    min-width: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+
+    z-index: 999;
+}
+
+.nav-link {
+    text-decoration: none;
+    color: white;
+}
+
+.nav-link-active {
+    color: yellowgreen;
 }
 
 h1,
@@ -18,6 +47,10 @@ h6 {
     margin: 1rem;
 }
 
+.gamesearch {
+    text-align: center;
+}
+
 .gamesearch-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -25,7 +58,8 @@ h6 {
     gap: 40px 40px;
 }
 
-.searching-opponent {
+.searching-opponent,
+.active-game {
     width: auto;
     height: fit-content;
     position: relative;
@@ -65,12 +99,11 @@ h6 {
     filter: blur(4px);
 }
 
-.game-view {
-    width: 100vw;
-    height: 100vh;
-}
-
 .game-players {
+    position: absolute;
+    top: 0;
+    left: 0;
+
     width: 100%;
     height: fit-content;
     display: flex;
@@ -78,6 +111,31 @@ h6 {
 }
 
 .game {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 560px; /* chesboardjsx static board size */
+    padding-top: 50px;
+}
+
+.player-card-holder {
+    height: 100%;
+}
+
+.player-card-holder > div {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.player-card-descriptior {
+    color: black;
+    margin-bottom: 10;
+}
+
+.meta-mask-button-holder {
     display: flex;
     justify-content: center;
     align-items: center;

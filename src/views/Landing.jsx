@@ -1,18 +1,19 @@
 import React from "react";
-import ButtonWithLoader from "../components/buttonWithLoader";
+import { MetaMaskButton } from "rimble-ui";
+import BlackKing from "../assets/bk";
+import WhiteKing from "../assets/wk";
 
-function Landing({ connectWallet, isLoading }) {
+function Landing({ connectWallet }) {
     return (
         <header className="App-header">
-            <h1>
-                ♘ Welcome to ChainChess, a decentalized chess battleground! ♔
-            </h1>
-
-            <ButtonWithLoader
-                isLoading={isLoading}
-                onClick={connectWallet}
-                text="Connect metamask wallet to start playing!"
-            ></ButtonWithLoader>
+            <h1>Welcome to ChainChess, a decentalized chess battleground! </h1>
+            <div className="meta-mask-button-holder">
+                <BlackKing />
+                <MetaMaskButton onClick={connectWallet}>
+                    Connect metamask wallet to start playing!
+                </MetaMaskButton>
+                <WhiteKing />
+            </div>
         </header>
     );
 }

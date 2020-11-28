@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Box, Button, Modal, Card, Heading, Flex } from "rimble-ui";
 import { useHistory } from "react-router-dom";
-import { getGameByOpponent } from "../standardGame";
+import { getGameByOpponent, acceptGame } from "../standardGame";
 import ButtonWithLoader from "../components/buttonWithLoader";
 
 function AcceptGameModal({
@@ -24,27 +24,18 @@ function AcceptGameModal({
         setIsOpen(true);
     };
 
-    const acceptGame = () => {
+    const startGame = () => {
         if (opponentAddress !== undefined) {
-            window.cc_standardGameContract.deployed().then((instance) => {
-                setIsLoading(true);
-                instance
-                    .acceptGame(opponentAddress, {
-                        from: connectedWalletAddress,
-                    })
-                    .then(() =>
-                        getGameByOpponent(
-                            connectedWalletAddress,
-                            opponentAddress
-                        )
-                    )
-                    .then((game) => {
-                        console.log(game);
-                        setIsLoading(false);
-                        closeModal();
-                        history.push(`/game/${game.gameId}`);
-                    });
-            });
+            setIsLoading(true);
+            acceptGame(connectedWalletAddress, opponentAddress)
+                .then(() =>
+                    getGameByOpponent(connectedWalletAddress, opponentAddress)
+                )
+                .then((game) => {
+                    setIsLoading(false);
+                    closeModal();
+                    history.push(`/game/${game.gameId}`);
+                });
         }
     };
 
@@ -83,11 +74,14 @@ function AcceptGameModal({
                         borderColor={"#E8E8E8"}
                         justifyContent={"flex-end"}
                     >
-                        <Button.Outline onClick={closeModal}>
+                        <Button.Outline
+                            disabled={isLoading}
+                            onClick={closeModal}
+                        >
                             Cancel
                         </Button.Outline>
                         <ButtonWithLoader
-                            onClick={acceptGame}
+                            onClick={startGame}
                             text="Confirm"
                             isLoading={isLoading}
                         />

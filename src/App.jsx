@@ -2,13 +2,14 @@ import React from "react";
 import "./App.css";
 import { updateWeb3AndReturnWeb3Provider, checksumAddr } from "./utils/eth";
 import { getStandardGameContract } from "./standardGame";
-import { BrowserRouter, Route, Switch } from "react-router-dom";
+import { Route, Switch, withRouter } from "react-router-dom";
 import { PrivateRoute } from "./utils/route";
 import Landing from "./views/Landing";
 import ActiveGames from "./views/ActiveGames";
 import GameSearch from "./views/GameSearch";
 import Profile from "./views/Profile";
 import Game from "./views/Game";
+import Nav from "./components/nav";
 
 class App extends React.Component {
     constructor(props) {
@@ -16,10 +17,9 @@ class App extends React.Component {
 
         this.state = {
             connectedWalletAddress: null,
-            usersSearching: null,
-            isLoading: false,
-            isConnected: true,
         };
+
+        this.refreshEthUtilsIfNecessary();
     }
 
     setupWeb3AndSetContract = () => {
@@ -27,9 +27,6 @@ class App extends React.Component {
         var web3Provider = updateWeb3AndReturnWeb3Provider();
         window.cc_standardGameContract = getStandardGameContract(web3Provider);
     };
-
-    handleSetUsersSearching = (newVal) =>
-        this.setState({ usersSearching: newVal });
 
     refreshEthUtilsIfNecessary = () => {
         const needToConnectWallet = window.ethereum.selectedAddress === null;
@@ -58,9 +55,15 @@ class App extends React.Component {
         that.refreshEthUtilsIfNecessary();
 
         window.ethereum.on("accountsChanged", async function () {
-            console.log("accountsChanged");
+            console.log("accounts changed");
 
-            if (
+            if (window.ethereum.selectedAddress === null) {
+                that.setState({
+                    connectedWalletAddress: null,
+                    declaredSearching: null,
+                    usersSearching: null,
+                });
+            } else if (
                 that.state.connectedWalletAddress !==
                 checksumAddr(window.ethereum.selectedAddress)
             ) {
@@ -87,30 +90,27 @@ class App extends React.Component {
             .enable()
             .then(() => {
                 this.setupWeb3AndSetContract();
-                if (
-                    this.state.connectedWalletAddress !==
-                    checksumAddr(window.ethereum.selectedAddress)
-                ) {
+                const newEthAddress = checksumAddr(
+                    window.ethereum.selectedAddress
+                );
+                if (this.state.connectedWalletAddress !== newEthAddress) {
                     this.setState({
-                        connectedWalletAddress: checksumAddr(
-                            window.ethereum.selectedAddress
-                        ),
+                        connectedWalletAddress: newEthAddress,
                     });
                 }
             })
             .finally(() => {
                 this.setState({ isLoading: false });
+
+                this.props.history.push(
+                    `/profile/${checksumAddr(window.ethereum.selectedAddress)}`
+                );
             });
     };
 
     render() {
         const needToConnectWallet = window.ethereum.selectedAddress === null;
         const contractLoaded = window.cc_standardGameContract !== undefined;
-
-        const viewProps = {
-            handleSetUsersSearching: this.handleSetUsersSearching,
-            ...this.state,
-        };
 
         const dappReady = !needToConnectWallet && contractLoaded;
 
@@ -119,45 +119,46 @@ class App extends React.Component {
             isAuthenticated: dappReady,
         };
 
-        // console.log("viewProps: ", viewProps);
-        // console.log("privateRouteProps: ", privateRouteProps);
-
         return (
             <div className="App">
-                <BrowserRouter>
+                <Nav
+                    connectedWalletAddress={this.state.connectedWalletAddress}
+                />
+                <div className="main">
                     <Switch>
-                        <PrivateRoute
-                            exact
-                            path="/"
-                            isAuthenticated={!dappReady}
-                            redirectPath="/search"
-                        >
+                        <Route exact path="/">
                             <Landing connectWallet={this.connectWallet} />
-                        </PrivateRoute>
+                        </Route>
                         <PrivateRoute path="/search" {...privateRouteProps}>
-                            <GameSearch {...viewProps} />
+                            <GameSearch {...this.state} />
                         </PrivateRoute>
                         <PrivateRoute
                             path="/activeGames"
                             {...privateRouteProps}
                         >
-                            <ActiveGames {...viewProps} />
+                            <ActiveGames {...this.state} />
                         </PrivateRoute>
-                        <PrivateRoute path="/profile" {...privateRouteProps}>
-                            <Profile {...viewProps} />
+                        <PrivateRoute
+                            path="/profile/:profileAddress?"
+                            {...privateRouteProps}
+                        >
+                            <Profile {...this.state} />
                         </PrivateRoute>
-                        <Route path="/game/:gameId">
+                        <PrivateRoute
+                            path="/game/:gameId?"
+                            {...privateRouteProps}
+                        >
                             <Game
                                 connectedWalletAddress={
                                     this.state.connectedWalletAddress
                                 }
                             />
-                        </Route>
+                        </PrivateRoute>
                     </Switch>
-                </BrowserRouter>
+                </div>
             </div>
         );
     }
 }
 
-export default App;
+export default withRouter(App);

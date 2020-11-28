@@ -1,5 +1,8 @@
 import TruffleContract from "@truffle/contract";
-import { parseResultToGame } from "./utils/game_parsing";
+import {
+    parseGameResponse,
+    parsePlayerProfileResponse,
+} from "./utils/game_parsing";
 import { getRankIndexFromVal, getFileIndexFromVal } from "./utils/chess";
 
 export const getStandardGameContract = (web3Provider) => {
@@ -10,23 +13,66 @@ export const getStandardGameContract = (web3Provider) => {
     return StandardGameContract;
 };
 
-export const getGameByOpponent = (connectedWalletAddress, opponentAddress) => {
+export const getGameByGameId = (connectedWalletAddress, gameId) => {
     return window.cc_standardGameContract.deployed().then(async (instance) => {
-        return await instance
-            .getGameByOpponent(opponentAddress, {
+        var basicInfoRequest = instance.getBasicInfoForGameByGameId(gameId, {
+            from: connectedWalletAddress,
+        });
+
+        var endGameInfoRequest = instance.getEndgameInfoForGameByGameId(
+            gameId,
+            {
                 from: connectedWalletAddress,
-            })
-            .then(parseResultToGame);
+            }
+        );
+
+        return await Promise.all([basicInfoRequest, endGameInfoRequest]).then(
+            ([basicInfo, endGameInfo]) => {
+                var info = {
+                    ...basicInfo,
+                    ...endGameInfo,
+                };
+
+                return parseGameResponse(info);
+            }
+        );
     });
 };
 
-export const getGameByGameId = (connectedWalletAddress, gameId) => {
+export const getGameByOpponent = (connectedWalletAddress, opponentAddress) => {
     return window.cc_standardGameContract.deployed().then(async (instance) => {
-        return await instance
-            .getGameByGameId(gameId, {
+        var basicInfoRequest = instance.getBasicInfoForGameByOpponentAddress(
+            opponentAddress,
+            {
                 from: connectedWalletAddress,
-            })
-            .then(parseResultToGame);
+            }
+        );
+
+        var endGameInfoRequest = instance.getEndgameInfoForGameByOpponentAddress(
+            opponentAddress,
+            {
+                from: connectedWalletAddress,
+            }
+        );
+
+        return await Promise.all([basicInfoRequest, endGameInfoRequest]).then(
+            ([basicInfo, endGameInfo]) => {
+                var info = {
+                    ...basicInfo,
+                    ...endGameInfo,
+                };
+
+                return parseGameResponse(info);
+            }
+        );
+    });
+};
+
+export const acceptGame = (connectedWalletAddress, opponentAddress) => {
+    return window.cc_standardGameContract.deployed().then(async (instance) => {
+        return await instance.acceptGame(opponentAddress, {
+            from: connectedWalletAddress,
+        });
     });
 };
 
@@ -39,8 +85,6 @@ export const movePiece = (
     const [prevFilePos, prevRankPos] = sourceSquare.split("");
     const [newFilePos, newRankPos] = targetSquare.split("");
 
-    console.log(gameId, prevRankPos, prevFilePos, newRankPos, newFilePos);
-
     return window.cc_standardGameContract.deployed().then(async (instance) => {
         return await instance.movePiece(
             gameId,
@@ -52,5 +96,41 @@ export const movePiece = (
                 from: connectedWalletAddress,
             }
         );
+    });
+};
+
+export const getPlayerProfile = (address) => {
+    return window.cc_standardGameContract.deployed().then(async (instance) => {
+        return await instance
+            .getPlayerProfile({ from: address })
+            .then(parsePlayerProfileResponse);
+    });
+};
+
+export const getActiveGames = (connectedWalletAddress) => {
+    return window.cc_standardGameContract.deployed().then(async (instance) => {
+        return await instance.getActiveGames({
+            from: connectedWalletAddress,
+        });
+    });
+};
+
+export const declareSearchingForGame = (connectedWalletAddress) => {
+    return window.cc_standardGameContract.deployed().then(async (instance) => {
+        return await instance.declareSearchingForGame({
+            from: connectedWalletAddress,
+        });
+    });
+};
+
+export const getUsersSearchingForGame = () => {
+    return window.cc_standardGameContract.deployed().then(async (instance) => {
+        return await instance.getUsersSearchingForGame();
+    });
+};
+
+export const userIsSearching = (address) => {
+    return window.cc_standardGameContract.deployed().then(async (instance) => {
+        return await instance.userIsSearching(address);
     });
 };
