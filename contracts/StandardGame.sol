@@ -10,7 +10,9 @@ contract StandardGame {
     mapping(uint => Chess.Game) games;
     mapping(address => PlayerProfile) players;
 
-    event MovePiece(uint indexed gameId, address indexed player, string moveHistory);
+    event PieceMove(uint indexed gameId, address indexed player, address indexed playerMakingMove, string moveHistory);
+    event GameStart(uint indexed gameId, address indexed address1, address address2);
+    event Checkmate(uint indexed gameId, address indexed winner, address indexed loser);
 
     struct PlayerProfile {
         uint[] activeGames;
@@ -64,6 +66,9 @@ contract StandardGame {
         if(userIsSearching(msg.sender)) {
             stopSearchingForGame(msg.sender);
         }
+
+        emit GameStart(newGame.gameId, msg.sender, otherPlayer);
+        emit GameStart(newGame.gameId, otherPlayer, msg.sender);
 
         return newGame.gameId;
     }
@@ -167,7 +172,8 @@ contract StandardGame {
 
         game.moveCount++;
 
-        emit MovePiece(gameId, msg.sender, game.moveHistory);
+        emit PieceMove(gameId, msg.sender, msg.sender, game.moveHistory);
+        emit PieceMove(gameId, game.board.playerSides[uint(Chess.getOtherSide(currentPlayer.side))], msg.sender, game.moveHistory);
 
         return moveHistoryEntry;
     }
@@ -243,6 +249,8 @@ contract StandardGame {
             }
             op.completedGames.push(game.gameId);
             op.losses++;
+
+            emit Checkmate(game.gameId, msg.sender, game.board.playerSides[uint(Chess.getOtherSide(currentPlayer.side))]);
         } else {
             game.currentTurn = otherPlayer.side;
         }

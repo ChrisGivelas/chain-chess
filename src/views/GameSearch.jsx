@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { Button, Flash } from "rimble-ui";
-import Chessboard from "chessboardjsx";
-import { checksumAddr, getAddressBlockie } from "../utils/eth";
+import React, { useEffect, useState } from "react";
+import { checksumAddr } from "../utils/eth";
 import AcceptGameModal from "../components/acceptGameModal";
 import { getUsersSearchingForGame } from "../standardGame";
+import OpponentChessboard from "../components/opponentChessboard";
 
 function GameSearch({ connectedWalletAddress }) {
     const [usersSearching, setUsersSearching] = useState(null);
@@ -21,49 +20,36 @@ function GameSearch({ connectedWalletAddress }) {
         : [];
 
     return (
-        <div className="gamesearch">
+        <React.Fragment>
             {Array.isArray(otherUsersSearching) &&
             otherUsersSearching.length > 0 ? (
-                otherUsersSearching.map((addr, i) => {
-                    const AcceptGameModalTrigger = ({ onClick }) => (
-                        <div onClick={onClick} className="blockie-holder">
-                            <p className="short-address">{addr}</p>
-                            {getAddressBlockie(addr)}
-                        </div>
-                    );
-                    return (
-                        <div
-                            key={`open_game_${addr}`}
-                            className="gamesearch-grid"
-                        >
+                <div className="gamesearch">
+                    {otherUsersSearching.map((addr, i) => {
+                        return (
                             <div
                                 key={`${addr}_${i}`}
                                 className="searching-opponent"
                             >
                                 <AcceptGameModal
-                                    OpenModalComponent={AcceptGameModalTrigger}
+                                    OpenModalComponent={({ onClick }) => (
+                                        <OpponentChessboard
+                                            onClick={onClick}
+                                            opponentAddress={addr}
+                                        />
+                                    )}
                                     connectedWalletAddress={
                                         connectedWalletAddress
                                     }
                                     opponentAddress={addr}
                                 />
-                                <div className="chessboard-holder blurred">
-                                    <Chessboard
-                                        className="blurred-chessboard"
-                                        position="start"
-                                        calcWidth={({ screenWidth }) =>
-                                            screenWidth / 4
-                                        }
-                                    />
-                                </div>
                             </div>
-                        </div>
-                    );
-                })
+                        );
+                    })}
+                </div>
             ) : (
                 <h1>No other users are searching right now.</h1>
             )}
-        </div>
+        </React.Fragment>
     );
 }
 

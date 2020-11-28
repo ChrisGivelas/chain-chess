@@ -2,7 +2,7 @@ import React from "react";
 import "./App.css";
 import { updateWeb3AndReturnWeb3Provider, checksumAddr } from "./utils/eth";
 import { getStandardGameContract } from "./standardGame";
-import { Route, Switch, withRouter } from "react-router-dom";
+import { Route, Switch, withRouter, Redirect } from "react-router-dom";
 import { PrivateRoute } from "./utils/route";
 import Landing from "./views/Landing";
 import ActiveGames from "./views/ActiveGames";
@@ -102,9 +102,7 @@ class App extends React.Component {
             .finally(() => {
                 this.setState({ isLoading: false });
 
-                this.props.history.push(
-                    `/profile/${checksumAddr(window.ethereum.selectedAddress)}`
-                );
+                this.props.history.push(`/activeGames`);
             });
     };
 
@@ -117,43 +115,58 @@ class App extends React.Component {
         const privateRouteProps = {
             redirectPath: "/",
             isAuthenticated: dappReady,
+            connectedWalletAddress: this.state.connectedWalletAddress,
         };
 
         return (
             <div className="App">
-                <Nav
-                    connectedWalletAddress={this.state.connectedWalletAddress}
-                />
+                {dappReady && (
+                    <Nav
+                        connectedWalletAddress={
+                            this.state.connectedWalletAddress
+                        }
+                    />
+                )}
                 <div className="main">
                     <Switch>
-                        <Route exact path="/">
-                            <Landing connectWallet={this.connectWallet} />
-                        </Route>
-                        <PrivateRoute path="/search" {...privateRouteProps}>
-                            <GameSearch {...this.state} />
-                        </PrivateRoute>
+                        <Route
+                            exact
+                            path="/"
+                            render={({ location }) =>
+                                !dappReady ? (
+                                    <Landing
+                                        connectWallet={this.connectWallet}
+                                    />
+                                ) : (
+                                    <Redirect
+                                        to={{
+                                            pathname: "/activeGames",
+                                            state: { from: location },
+                                        }}
+                                    />
+                                )
+                            }
+                        />
+                        <PrivateRoute
+                            path="/search"
+                            {...privateRouteProps}
+                            Component={GameSearch}
+                        />
                         <PrivateRoute
                             path="/activeGames"
                             {...privateRouteProps}
-                        >
-                            <ActiveGames {...this.state} />
-                        </PrivateRoute>
+                            Component={ActiveGames}
+                        />
                         <PrivateRoute
                             path="/profile/:profileAddress?"
                             {...privateRouteProps}
-                        >
-                            <Profile {...this.state} />
-                        </PrivateRoute>
+                            Component={Profile}
+                        />
                         <PrivateRoute
                             path="/game/:gameId?"
                             {...privateRouteProps}
-                        >
-                            <Game
-                                connectedWalletAddress={
-                                    this.state.connectedWalletAddress
-                                }
-                            />
-                        </PrivateRoute>
+                            Component={Game}
+                        />
                     </Switch>
                 </div>
             </div>

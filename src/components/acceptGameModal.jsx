@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import { Box, Button, Modal, Card, Heading, Flex } from "rimble-ui";
+import { Box, Button, Modal, Card, Heading, Flex, Loader } from "rimble-ui";
 import { useHistory } from "react-router-dom";
 import { getGameByOpponent, acceptGame } from "../standardGame";
-import ButtonWithLoader from "../components/buttonWithLoader";
 
 function AcceptGameModal({
     OpenModalComponent,
@@ -80,11 +79,17 @@ function AcceptGameModal({
                         >
                             Cancel
                         </Button.Outline>
-                        <ButtonWithLoader
-                            onClick={startGame}
-                            text="Confirm"
-                            isLoading={isLoading}
-                        />
+                        <Button ml={3} onClick={startGame} disabled={isLoading}>
+                            {isLoading ? (
+                                <Loader
+                                    bg="primary"
+                                    color="white"
+                                    size="20px"
+                                />
+                            ) : (
+                                "Confirm"
+                            )}
+                        </Button>
                     </Flex>
                 </Card>
             </Modal>

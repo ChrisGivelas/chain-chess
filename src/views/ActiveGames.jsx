@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
-import Chessboard from "chessboardjsx";
 import { getActiveGames } from "../standardGame";
 import { useHistory } from "react-router-dom";
-import { getAddressBlockie } from "../utils/eth";
+import OpponentChessboard from "../components/opponentChessboard";
 
 function ActiveGames({ connectedWalletAddress, standardGameContract }) {
     const history = useHistory();
@@ -14,7 +13,7 @@ function ActiveGames({ connectedWalletAddress, standardGameContract }) {
             getActiveGames(connectedWalletAddress).then((active) => {
                 var games = active.gameIds.map((id, i) => ({
                     gameId: id,
-                    opponent: active.opponentAddresses[i],
+                    opponentAddress: active.opponentAddresses[i],
                 }));
 
                 setActiveGames(games);
@@ -27,35 +26,26 @@ function ActiveGames({ connectedWalletAddress, standardGameContract }) {
     };
 
     return (
-        <div>
+        <React.Fragment>
             {Array.isArray(activeGames) && activeGames.length > 0 ? (
-                activeGames.map((activeGame) => (
-                    <div
-                        key={`${activeGame.gameId}_${activeGame.opponent}`}
-                        className="active-game"
-                    >
+                <div className="active-games">
+                    {activeGames.map((activeGame, i) => (
                         <div
-                            onClick={onClick(activeGame.gameId)}
-                            className="blockie-holder"
+                            key={`${activeGames.gameId}_${i}`}
+                            className="active-game"
                         >
-                            <p className="short-address">
-                                {activeGame.opponent}
-                            </p>
-                            {getAddressBlockie(activeGame.opponent)}
-                        </div>
-                        <div className="chessboard-holder blurred">
-                            <Chessboard
-                                className="blurred-chessboard"
-                                position="start"
-                                calcWidth={({ screenWidth }) => screenWidth / 4}
+                            <OpponentChessboard
+                                key={`activegame_${activeGame.gameId}`}
+                                onClick={onClick(activeGame.gameId)}
+                                {...activeGame}
                             />
                         </div>
-                    </div>
-                ))
+                    ))}
+                </div>
             ) : (
                 <h1>No Active Games.</h1>
             )}
-        </div>
+        </React.Fragment>
     );
 }
 

@@ -40,15 +40,24 @@ function Profile({ connectedWalletAddress }) {
     return (
         playerProfile && (
             <div className="profile">
-                <h1>Address: {profileAddress}</h1>
-                <h2>Wins: {playerProfile.wins}</h2>
-                <h2>Losses: {playerProfile.losses}</h2>
+                <h2 style={{ color: "yellowgreen" }}>{profileAddress}</h2>
+                <h2 style={{ color: "green" }}>
+                    Wins: <span>{playerProfile.wins}</span>
+                </h2>
+                <h2 style={{ color: "red" }}>
+                    Losses: <span>{playerProfile.losses}</span>
+                </h2>
                 {connectedWalletAddress === profileAddress &&
                     (isSearching ? (
-                        <h3>
-                            You have declared your intent to wage war. A
-                            challenger shall arrive soon...
-                        </h3>
+                        <React.Fragment>
+                            <h2>
+                                You have declared your intent to wage war. A
+                                challenger shall arrive soon...
+                            </h2>
+                            <h4>
+                                (You'll get a notification when someone accepts)
+                            </h4>
+                        </React.Fragment>
                     ) : (
                         <Button onClick={searchForGame}>
                             Declare your need for battle!

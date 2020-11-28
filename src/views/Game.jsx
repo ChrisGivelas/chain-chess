@@ -20,13 +20,23 @@ function Game({ connectedWalletAddress }) {
         chess: new Chess(),
         positions: {},
     });
-    const moveHistory = useMovePieceSubscription(gameId);
+    const moveHistory = useMovePieceSubscription(
+        connectedWalletAddress,
+        gameId
+    );
+
     const updateChessboard = useCallback(
         (moveHistory) => {
             setChessboard(getGameChessboard(moveHistory, chessboard.chess));
         },
         [chessboard.chess]
     );
+
+    useEffect(() => {
+        if (moveHistory !== null) {
+            updateChessboard(moveHistory);
+        }
+    }, [moveHistory, updateChessboard]);
 
     const onDrop = ({ sourceSquare, targetSquare }) => {
         let move = chessboard.chess.move({
@@ -74,18 +84,12 @@ function Game({ connectedWalletAddress }) {
         updateChessboard,
     ]);
 
-    useEffect(() => {
-        if (moveHistory !== null) {
-            updateChessboard(moveHistory);
-        }
-    }, [moveHistory, updateChessboard]);
-
     return (
         <React.Fragment>
             {gameInfo && (
                 <div className="game-players">
                     <div className="player-card-holder">
-                        <Card className="blah" width="auto" maxWidth="420px">
+                        <Card width="auto" maxWidth="420px">
                             {gameInfo.black.address ===
                                 connectedWalletAddress && (
                                 <h3

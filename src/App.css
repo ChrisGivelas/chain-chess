@@ -6,7 +6,8 @@
     align-items: center;
     font-size: calc(10px + 2vmin);
     color: white;
-    height: 100vh;
+    min-width: 800px;
+    min-height: 100vh;
 }
 
 .main {
@@ -16,6 +17,7 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    height: calc(100vh - 50px);
 }
 
 .nav {
@@ -25,8 +27,6 @@
     display: flex;
     align-items: center;
     justify-content: space-evenly;
-
-    z-index: 999;
 }
 
 .nav-link {
@@ -47,19 +47,15 @@ h6 {
     margin: 1rem;
 }
 
-.gamesearch {
+.gamesearch,
+.active-games {
     text-align: center;
-}
-
-.gamesearch-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    height: 100%;
     gap: 40px 40px;
 }
 
-.searching-opponent,
-.active-game {
+.opponent-chessboard {
     width: auto;
     height: fit-content;
     position: relative;
@@ -100,14 +96,11 @@ h6 {
 }
 
 .game-players {
-    position: absolute;
-    top: 0;
-    left: 0;
-
     width: 100%;
     height: fit-content;
     display: flex;
     justify-content: space-between;
+    position: absolute;
 }
 
 .game {
@@ -115,7 +108,6 @@ h6 {
     justify-content: center;
     align-items: center;
     min-width: 560px; /* chesboardjsx static board size */
-    padding-top: 50px;
 }
 
 .player-card-holder {
