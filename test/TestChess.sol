@@ -4,6 +4,8 @@ import "truffle/Assert.sol";
 import "truffle/DeployedAddresses.sol";
 import "../contracts/Chess.sol";
 
+/// @title Unit tests for the Chess library
+/// @author Christopher Givelas
 contract TestChess {
     address player1 = address(100000);
     address player2 = address(100001);
@@ -13,12 +15,12 @@ contract TestChess {
         Chess.Game storage board = testGame;
 
         testGame.board.players[player1].side = Chess.PlayerSide.White;
-        testGame.board.players[player1].kingRankPos = 0;
-        testGame.board.players[player1].kingFilePos = 7;
+        testGame.board.players[player1].kingRank = 0;
+        testGame.board.players[player1].kingFile = 7;
 
         testGame.board.players[player2].side = Chess.PlayerSide.Black;
-        testGame.board.players[player2].kingRankPos = 6;
-        testGame.board.players[player2].kingFilePos = 7;
+        testGame.board.players[player2].kingRank = 6;
+        testGame.board.players[player2].kingFile = 7;
 
         /**
             Test board initial configuration

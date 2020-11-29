@@ -5,6 +5,8 @@ import "truffle/DeployedAddresses.sol";
 import "../contracts/StandardGame.sol";
 import "../contracts/PlayerProxy.sol";
 
+/// @title Unit tests for the Standard Game library
+/// @author Christopher Givelas
 contract TestStandardGame {
     StandardGame standardGame = StandardGame(DeployedAddresses.StandardGame());
 

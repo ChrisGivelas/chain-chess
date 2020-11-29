@@ -1,6 +1,11 @@
 pragma solidity ^0.6.0;
 
+/// @title Library containing fundamental chess validation logic and structs for different concepts of the game
+/// @author Christopher Givelas
 library Chess {
+    uint constant MAX_RANK = 7;
+    uint constant MAX_FILE = 7;
+
     enum PieceType { None, Pawn, Knight, Bishop, Rook, Queen, King }
     enum PlayerSide { None, White, Black }
 
@@ -12,8 +17,8 @@ library Chess {
 
     struct Player {
         PlayerSide side;
-        uint kingRankPos;
-        uint kingFilePos;
+        uint kingRank;
+        uint kingFile;
     }
 
     struct BoardSquare {
@@ -39,187 +44,251 @@ library Chess {
         address winner;
         uint moveCount;
     }
+    
+    /// @notice Main function called for validating a piece move. Calls appropriate method depending on piece type.
+    /// @param prevRank previous rank of the piece to move
+    /// @param prevFile previous file of the piece to move
+    /// @param newRank new rank to move this piece to
+    /// @param newFile new file to move this piece to
+    /// @param piece the piece that is being moved
+    /// @param board the current chessboard state
+    function validateMove(uint prevRank, uint prevFile, uint newRank, uint newFile, Piece memory piece, Board memory board) internal pure {
+        require(!(board.squares[newRank][newFile].isOccupied && board.squares[newRank][newFile].piece.side == piece.side), "New square has one of player's own pieces");
 
-    function validateMove(uint prevRankPos, uint prevFilePos, uint newRankPos, uint newFilePos, Piece memory pieceToMove, Board memory board) internal pure {
-        require(!(board.squares[newRankPos][newFilePos].isOccupied && board.squares[newRankPos][newFilePos].piece.side == pieceToMove.side), "New square has one of player's own pieces");
-
-        if(pieceToMove.pieceType == PieceType.Pawn) {
-            validatePawnMove(prevRankPos, prevFilePos, newRankPos, newFilePos, pieceToMove, board);
-        } else if (pieceToMove.pieceType == PieceType.Knight) { 
-            validateKnightMove(prevRankPos, prevFilePos, newRankPos, newFilePos);  
-        }  else if (pieceToMove.pieceType == PieceType.Knight) {
-            validateKingMove(prevRankPos, prevFilePos, newRankPos, newFilePos, pieceToMove, board);
-        } else if (pieceToMove.pieceType == PieceType.Bishop) {
-            validateDiagonalMove(prevRankPos, prevFilePos, newRankPos, newFilePos, board, true);
-        } else if (pieceToMove.pieceType == PieceType.Rook) {
-            validateAxialMove(prevRankPos, prevFilePos, newRankPos, newFilePos, board, true);
-        } else if (pieceToMove.pieceType == PieceType.Queen) {
-            validateDiagonalOrAxialMove(prevRankPos, prevFilePos, newRankPos, newFilePos, board, true);
+        if(piece.pieceType == PieceType.Pawn) {
+            validatePawnMove(prevRank, prevFile, newRank, newFile, piece, board);
+        } else if (piece.pieceType == PieceType.Knight) { 
+            validateKnightMove(prevRank, prevFile, newRank, newFile);  
+        }  else if (piece.pieceType == PieceType.Knight) {
+            validateKingMove(prevRank, prevFile, newRank, newFile, piece, board);
+        } else if (piece.pieceType == PieceType.Bishop) {
+            validateDiagonalMove(prevRank, prevFile, newRank, newFile, board, true);
+        } else if (piece.pieceType == PieceType.Rook) {
+            validateAxialMove(prevRank, prevFile, newRank, newFile, board, true);
+        } else if (piece.pieceType == PieceType.Queen) {
+            validateDiagonalOrAxialMove(prevRank, prevFile, newRank, newFile, board, true);
         }
     }
 
-    function validatePawnMove(uint prevRankPos, uint prevFilePos, uint newRankPos, uint newFilePos, Piece memory piece, Board memory board) pure internal {
-        (uint rankPosDiff, uint filePosDiff) = getPositionDiff(prevRankPos, prevFilePos, newRankPos, newFilePos);
+    /// @notice Validate a pawn move.
+    /// @param prevRank previous rank of the piece to move
+    /// @param prevFile previous file of the piece to move
+    /// @param newRank new rank to move this piece to
+    /// @param newFile new file to move this piece to
+    /// @param piece the piece that is being moved
+    /// @param board the current chessboard state
+    function validatePawnMove(uint prevRank, uint prevFile, uint newRank, uint newFile, Piece memory piece, Board memory board) pure internal {
+        (uint rankDiff, uint fileDiff) = getPositionDiff(prevRank, prevFile, newRank, newFile);
+        require(fileDiff < 2, "Pawn can only change at most 1 file (while capturing)");
 
         if(piece.side == PlayerSide.Black) {
-            require(prevRankPos > newRankPos, "Wrong direction for black pawn");
+            require(prevRank > newRank, "Wrong direction for black pawn");
         } else if(piece.side == PlayerSide.White) {
-            require(prevRankPos < newRankPos, "Wrong direction for white pawn");
+            require(prevRank < newRank, "Wrong direction for white pawn");
         }
 
-        require(filePosDiff < 2, "Pawn can only change at most 1 file (while capturing)");
-
-        if(filePosDiff == 0) {
-            if(piece.hasMadeInitialMove) require(rankPosDiff == 1, "Pawn can only move one square at a time after initial move");
-            else require(rankPosDiff == 1 || rankPosDiff == 2, "Pawn can move one or two squares on initial move");
-        } else if(filePosDiff == 1) {
-            require(rankPosDiff == 1 && board.squares[newRankPos][newFilePos].isOccupied, "Pawn can only change file while capturing");
+        if(fileDiff == 0) {
+            if(piece.hasMadeInitialMove) require(rankDiff == 1, "Pawn can only move one square at a time after initial move");
+            else require(rankDiff == 1 || rankDiff == 2, "Pawn can move one or two squares on initial move");
+        } else if(fileDiff == 1) {
+            require(rankDiff == 1 && board.squares[newRank][newFile].isOccupied, "Pawn can only change file while capturing");
         }
     }
 
-    function validateKnightMove(uint prevRankPos, uint prevFilePos, uint newRankPos, uint newFilePos) pure internal {
-        (uint rankPosDiff, uint filePosDiff) = getPositionDiff(prevRankPos, prevFilePos, newRankPos, newFilePos);
+    /// @notice Validate a knight move.
+    /// @param prevRank previous rank of the piece to move
+    /// @param prevFile previous file of the piece to move
+    /// @param newRank new rank to move this piece to
+    /// @param newFile new file to move this piece to
+    function validateKnightMove(uint prevRank, uint prevFile, uint newRank, uint newFile) pure internal {
+        (uint rankDiff, uint fileDiff) = getPositionDiff(prevRank, prevFile, newRank, newFile);
 
-        require((rankPosDiff == 2 && filePosDiff == 1) || (rankPosDiff == 1 && filePosDiff == 2), "Invalid knight move");
+        require((rankDiff == 2 && fileDiff == 1) || (rankDiff == 1 && fileDiff == 2), "Invalid knight move");
     }
 
-    function validateKingMove(uint prevRankPos, uint prevFilePos, uint newRankPos, uint newFilePos, Piece memory piece, Board memory board) internal pure returns(bool) {
-        validateDiagonalOrAxialMove(prevRankPos, prevFilePos, newRankPos, newFilePos, board, false);
-        require(!positionIsThreatened(newRankPos, newFilePos, board, piece.side), "New position for king is threatened");
+    /// @notice Validate a king move.
+    /// @param prevRank previous rank of the piece to move
+    /// @param prevFile previous file of the piece to move
+    /// @param newRank new rank to move this piece to
+    /// @param newFile new file to move this piece to
+    /// @param piece the piece that is being moved
+    /// @param board the current chessboard state
+    function validateKingMove(uint prevRank, uint prevFile, uint newRank, uint newFile, Piece memory piece, Board memory board) internal pure returns(bool) {
+        validateDiagonalOrAxialMove(prevRank, prevFile, newRank, newFile, board, false);
+        require(!positionIsThreatened(newRank, newFile, board, piece.side), "New position for king is threatened");
     }
 
-    function validateDiagonalMove(uint prevRankPos, uint prevFilePos, uint newRankPos, uint newFilePos, Board memory board, bool repeating) pure internal {
-        (uint rankPosDiff, uint filePosDiff) = getPositionDiff(prevRankPos, prevFilePos, newRankPos, newFilePos);
+    /// @notice Validate a generic diagonal move.
+    /// @param prevRank previous rank of the piece to move
+    /// @param prevFile previous file of the piece to move
+    /// @param newRank new rank to move this piece to
+    /// @param newFile new file to move this piece to
+    /// @param board the current chessboard state
+    /// @param repeating Check as far a distance as possible away from origin square. If false, only allow this move to be a maximum of one square away
+    function validateDiagonalMove(uint prevRank, uint prevFile, uint newRank, uint newFile, Board memory board, bool repeating) pure internal {
+        (uint rankDiff, uint fileDiff) = getPositionDiff(prevRank, prevFile, newRank, newFile);
 
         if(repeating) {
-            require(rankPosDiff == filePosDiff, "Invalid move (D1)");
+            require(rankDiff == fileDiff, "Invalid move (D1)");
         } else {
-            require(rankPosDiff == 1 && filePosDiff == 1, "Invalid move (D2)");
+            require(rankDiff == 1 && fileDiff == 1, "Invalid move (D2)");
         }
 
-        require(!isDiagonalMoveBlocked(prevRankPos, prevFilePos, newRankPos, newFilePos, board), "Diagonal move is blocked");
+        require(!isDiagonalMoveBlocked(prevRank, prevFile, newRank, newFile, board), "Diagonal move is blocked");
     }
 
-    function validateAxialMove(uint prevRankPos, uint prevFilePos, uint newRankPos, uint newFilePos, Board memory board, bool repeating) pure internal {
-        (uint rankPosDiff, uint filePosDiff) = getPositionDiff(prevRankPos, prevFilePos, newRankPos, newFilePos);
+    /// @notice Validate a generic axial move.
+    /// @param prevRank previous rank of the piece to move
+    /// @param prevFile previous file of the piece to move
+    /// @param newRank new rank to move this piece to
+    /// @param newFile new file to move this piece to
+    /// @param board the current chessboard state
+    /// @param repeating Check as far a distance as possible away from origin square. If false, only allow this move to be a maximum of one square away
+    function validateAxialMove(uint prevRank, uint prevFile, uint newRank, uint newFile, Board memory board, bool repeating) pure internal {
+        (uint rankDiff, uint fileDiff) = getPositionDiff(prevRank, prevFile, newRank, newFile);
 
         if(repeating) {
-            require((rankPosDiff == 0 && filePosDiff != 0) || (rankPosDiff != 0 && filePosDiff == 0), "Invalid move (A1)");
+            require((rankDiff == 0 && fileDiff != 0) || (rankDiff != 0 && fileDiff == 0), "Invalid move (A1)");
         } else {
-            require((rankPosDiff == 0 && filePosDiff == 1) || (rankPosDiff == 1 && filePosDiff == 0), "Invalid move (A2)");
+            require((rankDiff == 0 && fileDiff == 1) || (rankDiff == 1 && fileDiff == 0), "Invalid move (A2)");
         }
 
-        require(!isAxialMoveBlocked(prevRankPos, prevFilePos, newRankPos, newFilePos, board), "Axial move is blocked");
+        require(!isAxialMoveBlocked(prevRank, prevFile, newRank, newFile, board), "Axial move is blocked");
     }
 
-    function validateDiagonalOrAxialMove(uint prevRankPos, uint prevFilePos, uint newRankPos, uint newFilePos, Board memory board, bool repeating) pure internal {
-        (uint rankPosDiff, uint filePosDiff) = getPositionDiff(prevRankPos, prevFilePos, newRankPos, newFilePos);
+    /// @notice Validate a omnidirectional move (for king or queen).
+    /// @param prevRank previous rank of the piece to move
+    /// @param prevFile previous file of the piece to move
+    /// @param newRank new rank to move this piece to
+    /// @param newFile new file to move this piece to
+    /// @param board the current chessboard state
+    /// @param repeating Check as far a distance as possible away from origin square. If false, only allow this move to be a maximum of one square away
+    function validateDiagonalOrAxialMove(uint prevRank, uint prevFile, uint newRank, uint newFile, Board memory board, bool repeating) pure internal {
+        (uint rankDiff, uint fileDiff) = getPositionDiff(prevRank, prevFile, newRank, newFile);
 
         if(repeating) {
             require(
-                (rankPosDiff == 0 && filePosDiff != 0) ||
-                (rankPosDiff != 0 && filePosDiff == 0) ||
-                (rankPosDiff == filePosDiff), 
+                (rankDiff == 0 && fileDiff != 0) ||
+                (rankDiff != 0 && fileDiff == 0) ||
+                (rankDiff == fileDiff), 
                 "Invalid move (DA1)");
         } else {
             require(
-                (rankPosDiff == 0 && filePosDiff == 1) ||
-                (rankPosDiff == 1 && filePosDiff == 0) ||
-                (rankPosDiff == 1 && filePosDiff == 1),
+                (rankDiff == 0 && fileDiff == 1) ||
+                (rankDiff == 1 && fileDiff == 0) ||
+                (rankDiff == 1 && fileDiff == 1),
                 "Invalid move (DA2)");
         }
 
         require(
-            !isAxialMoveBlocked(prevRankPos, prevFilePos, newRankPos, newFilePos, board) &&
-            !isDiagonalMoveBlocked(prevRankPos, prevFilePos, newRankPos, newFilePos, board)
+            !isAxialMoveBlocked(prevRank, prevFile, newRank, newFile, board) &&
+            !isDiagonalMoveBlocked(prevRank, prevFile, newRank, newFile, board)
             , "Omnidirectional move is blocked"
         );
     }
 
-    function isAxialMoveBlocked(uint startRank, uint startFile, uint endRank, uint endFile, Board memory board) pure internal returns(bool) {
-        bool found;
-        uint foundRank;
-        uint foundFile;
-
-        if(startRank > endRank && startFile == endFile) {
-            (found, foundRank, foundFile,) = findClosestPieceInLowerRankAxial(startRank, startFile, board);
-            if(found && (foundRank != endRank || foundFile != endFile)) return true;
-        } else if(startRank < endRank && startFile == endFile) {
-            (found, foundRank, foundFile,) = findClosestPieceInUpperRankAxial(startRank, startFile, board);
-            if(found && (foundRank != endRank || foundFile != endFile)) return true;
-        } else if(startFile > endFile && startRank == endRank) {
-            (found, foundRank, foundFile,) = findClosestPieceInLowerFileAxial(startRank, startFile, board);
-            if(found && (foundRank != endRank || foundFile != endFile)) return true;
-        } else if(startFile < endFile && startRank == endRank) {
-            (found, foundRank, foundFile,) = findClosestPieceInUpperFileAxial(startRank, startFile, board);
-            if(found && (foundRank != endRank || foundFile != endFile)) return true;
+    /// @notice Checks to see if another piece is in the way of this axial move
+    /// @param prevRank previous rank of the piece to move
+    /// @param prevFile previous file of the piece to move
+    /// @param newRank new rank to move this piece to
+    /// @param newFile new file to move this piece to
+    /// @param board the current chessboard state
+    /// @return bool - whether a piece is blocking this move
+    function isAxialMoveBlocked(uint prevRank, uint prevFile, uint newRank, uint newFile, Board memory board) pure internal returns(bool) {
+        if(prevRank > newRank && prevFile == newFile) {
+            (bool found, uint foundRank, uint foundFile,) = findClosestPieceInLowerRankAxial(prevRank, prevFile, board);
+            if(found && (foundRank != newRank || foundFile != newFile)) return true;
+        } else if(prevRank < newRank && prevFile == newFile) {
+            (bool found, uint foundRank, uint foundFile,) = findClosestPieceInUpperRankAxial(prevRank, prevFile, board);
+            if(found && (foundRank != newRank || foundFile != newFile)) return true;
+        } else if(prevFile > newFile && prevRank == newRank) {
+            (bool found, uint foundRank, uint foundFile,) = findClosestPieceInLowerFileAxial(prevRank, prevFile, board);
+            if(found && (foundRank != newRank || foundFile != newFile)) return true;
+        } else if(prevFile < newFile && prevRank == newRank) {
+            (bool found, uint foundRank, uint foundFile,) = findClosestPieceInUpperFileAxial(prevRank, prevFile, board);
+            if(found && (foundRank != newRank || foundFile != newFile)) return true;
         }
 
         return false;
     }
 
-    function isDiagonalMoveBlocked(uint startRank, uint startFile, uint endRank, uint endFile, Board memory board) pure internal returns(bool) {
-        bool found;
-        uint foundRank;
-        uint foundFile;
-
-        if(startRank > endRank && startFile > endFile) {
-            (found, foundRank, foundFile,) = findClosestPieceInBackwardLeftDiagonal(startRank, startFile, board);
-            if(found && (foundRank != endRank || foundFile != endFile)) return true;
-        } else if(startRank > endRank && startFile < endFile) {
-            (found, foundRank, foundFile,) = findClosestPieceInBackwardRightDiagonal(startRank, startFile, board);
-            if(found && (foundRank != endRank || foundFile != endFile)) return true;
-        } else if(startRank < endRank && startFile < endFile) {
-            (found, foundRank, foundFile,) = findClosestPieceInForwardRightDiagonal(startRank, startFile, board);
-            if(found && (foundRank != endRank || foundFile != endFile)) return true;
-        } else if(startRank < endRank && startFile > endFile) {
-            (found, foundRank, foundFile,) = findClosestPieceInForwardLeftDiagonal(startRank, startFile, board);
-            if(found && (foundRank != endRank || foundFile != endFile)) return true;
+    /// @notice Checks to see if another piece is in the way of this diagonal move
+    /// @param prevRank previous rank of the piece to move
+    /// @param prevFile previous file of the piece to move
+    /// @param newRank new rank to move this piece to
+    /// @param newFile new file to move this piece to
+    /// @param board the current chessboard state
+    /// @return bool - whether a piece is blocking this move
+    function isDiagonalMoveBlocked(uint prevRank, uint prevFile, uint newRank, uint newFile, Board memory board) pure internal returns(bool) {
+        if(prevRank > newRank && prevFile > newFile) {
+            (bool found, uint foundRank, uint foundFile,) = findClosestPieceInBackwardLeftDiagonal(prevRank, prevFile, board);
+            if(found && (foundRank != newRank || foundFile != newFile)) return true;
+        } else if(prevRank > newRank && prevFile < newFile) {
+            (bool found, uint foundRank, uint foundFile,) = findClosestPieceInBackwardRightDiagonal(prevRank, prevFile, board);
+            if(found && (foundRank != newRank || foundFile != newFile)) return true;
+        } else if(prevRank < newRank && prevFile < newFile) {
+            (bool found, uint foundRank, uint foundFile,) = findClosestPieceInForwardRightDiagonal(prevRank, prevFile, board);
+            if(found && (foundRank != newRank || foundFile != newFile)) return true;
+        } else if(prevRank < newRank && prevFile > newFile) {
+            (bool found, uint foundRank, uint foundFile,) = findClosestPieceInForwardLeftDiagonal(prevRank, prevFile, board);
+            if(found && (foundRank != newRank || foundFile != newFile)) return true;
         }
 
         return false;
     }
 
-    function positionIsThreatened(uint rankPos, uint filePos, Board memory board, PlayerSide side) internal pure returns(bool) {
-        // Check for threatening knight
-        if(knightThreatensPosition(rankPos, filePos, board, side)) return true;
+    /// @notice Checks to see if the square given is threatened
+    /// @param rank new rank to move this piece to
+    /// @param file new file to move this piece to
+    /// @param board the current chessboard state
+    /// @param side the player colour of the position being checked
+    /// @return bool - whether the position/colour is threatened
+    function positionIsThreatened(uint rank, uint file, Board memory board, PlayerSide side) internal pure returns(bool) {
+        if(knightThreatensPosition(rank, file, board, side)) return true;
 
-        (bool pieceFound, uint pieceRank, uint pieceFile, Piece memory piece) = findClosestPieceInLowerRankAxial(rankPos, filePos, board);
+        (bool pieceFound, uint pieceRank, uint pieceFile, Piece memory piece) = findClosestPieceInLowerRankAxial(rank, file, board);
         if(pieceFound && piece.side != side) {
-            if(isThreateningAxial(rankPos, filePos, pieceRank, pieceFile, piece)) return true;
+            if(isThreatenedAxial(rank, file, pieceRank, pieceFile, piece)) return true;
         }
-        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInUpperFileAxial(rankPos, filePos, board);
+        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInUpperFileAxial(rank, file, board);
         if(pieceFound && piece.side != side) {
-            if(isThreateningAxial(rankPos, filePos, pieceRank, pieceFile, piece)) return true;
+            if(isThreatenedAxial(rank, file, pieceRank, pieceFile, piece)) return true;
         }
-        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInUpperRankAxial(rankPos, filePos, board);
+        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInUpperRankAxial(rank, file, board);
         if(pieceFound && piece.side != side) {
-            if(isThreateningAxial(rankPos, filePos, pieceRank, pieceFile, piece)) return true;
+            if(isThreatenedAxial(rank, file, pieceRank, pieceFile, piece)) return true;
         }
-        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInLowerFileAxial(rankPos, filePos, board);
+        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInLowerFileAxial(rank, file, board);
         if(pieceFound && piece.side != side) {
-            if(isThreateningAxial(rankPos, filePos, pieceRank, pieceFile, piece)) return true;
+            if(isThreatenedAxial(rank, file, pieceRank, pieceFile, piece)) return true;
         }
-        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInBackwardLeftDiagonal(rankPos, filePos, board);
+        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInBackwardLeftDiagonal(rank, file, board);
         if(pieceFound && piece.side != side) {
-            if(isThreateningDiagonal(rankPos, filePos, pieceRank, pieceFile, piece, side)) return true;
+            if(isThreatenedDiagonal(rank, file, pieceRank, pieceFile, piece, side)) return true;
         }
-        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInBackwardRightDiagonal(rankPos, filePos, board);
+        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInBackwardRightDiagonal(rank, file, board);
         if(pieceFound && piece.side != side) {
-            if(isThreateningDiagonal(rankPos, filePos, pieceRank, pieceFile, piece, side)) return true;
+            if(isThreatenedDiagonal(rank, file, pieceRank, pieceFile, piece, side)) return true;
         }
-        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInForwardRightDiagonal(rankPos, filePos, board);
+        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInForwardRightDiagonal(rank, file, board);
         if(pieceFound && piece.side != side) {
-            if(isThreateningDiagonal(rankPos, filePos, pieceRank, pieceFile, piece, side)) return true;
+            if(isThreatenedDiagonal(rank, file, pieceRank, pieceFile, piece, side)) return true;
         }
-        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInForwardLeftDiagonal(rankPos, filePos, board);
+        (pieceFound, pieceRank, pieceFile, piece) = findClosestPieceInForwardLeftDiagonal(rank, file, board);
         if(pieceFound && piece.side != side) {
-            if(isThreateningDiagonal(rankPos, filePos, pieceRank, pieceFile, piece, side)) return true;
+            if(isThreatenedDiagonal(rank, file, pieceRank, pieceFile, piece, side)) return true;
         }
     }
 
-    function isThreateningAxial(uint rankPos, uint filePos, uint pieceRank, uint pieceFile, Piece memory piece) internal pure returns(bool) {
-        (uint rankPosDiff, uint filePosDiff) = getPositionDiff(rankPos, filePos, pieceRank, pieceFile);
+    /// @notice Checks to see if square denoted by `rankPos` and `filePos` is threatened on an axial
+    /// @param rankPos the rank of the square we are checking
+    /// @param filePos the file of the square we are checking
+    /// @param rankToCheck the rank of the threatening piece
+    /// @param fileToCheck the file of the threatening piece
+    /// @param piece the threatening piece
+    /// @return bool - whether the axial is threatened
+    function isThreatenedAxial(uint rankPos, uint filePos, uint rankToCheck, uint fileToCheck, Piece memory piece) internal pure returns(bool) {
+        (uint rankPosDiff, uint filePosDiff) = getPositionDiff(rankPos, filePos, rankToCheck, fileToCheck);
 
         if(rankPosDiff < 2 && filePosDiff < 2 && piece.pieceType == PieceType.King) {
             return true;
@@ -232,8 +301,15 @@ library Chess {
         return false;
     }
 
-    function isThreateningDiagonal(uint rankPos, uint filePos, uint pieceRank, uint pieceFile, Piece memory piece, PlayerSide side) internal pure returns (bool) {
-        (uint rankPosDiff, uint filePosDiff) = getPositionDiff(rankPos, filePos, pieceRank, pieceFile);
+    /// @notice Checks to see if square denoted by `rankPos` and `filePos` is threatened on a diagonal
+    /// @param rankPos the rank of the square we are checking
+    /// @param filePos the file of the square we are checking
+    /// @param rankToCheck the rank of the threatening piece
+    /// @param fileToCheck the file of the threatening piece
+    /// @param piece the threatening piece
+    /// @return bool - whether the diagonal is threatened
+    function isThreatenedDiagonal(uint rankPos, uint filePos, uint rankToCheck, uint fileToCheck, Piece memory piece, PlayerSide side) internal pure returns (bool) {
+        (uint rankPosDiff, uint filePosDiff) = getPositionDiff(rankPos, filePos, rankToCheck, fileToCheck);
 
         if(rankPosDiff < 2 && filePosDiff < 2) {
             if(piece.pieceType == PieceType.King) {
@@ -241,9 +317,9 @@ library Chess {
             }
 
             if(rankPosDiff == 1 && filePosDiff == 1 && piece.pieceType == PieceType.Pawn) {
-                if(side == PlayerSide.Black && pieceRank < rankPos) {
+                if(side == PlayerSide.Black && rankToCheck < rankPos) {
                     return true;
-                } else if(side == PlayerSide.White && pieceRank > rankPos) {
+                } else if(side == PlayerSide.White && rankToCheck > rankPos) {
                     return true;
                 }
             }
@@ -256,6 +332,14 @@ library Chess {
         return false;
     }
 
+    /// @notice Finds the closest piece in: descending axial, same file
+    /// @param startRank the rank to start checking from
+    /// @param file the file which remains constant for this axial
+    /// @param board the current chessboard state
+    /// @return bool - Whether a piece was found in the way of this axial move
+    /// @return uint - rank of piece found
+    /// @return uint - file of piece found
+    /// @return Piece - the found piece
     function findClosestPieceInLowerRankAxial(uint startRank, uint file, Board memory board) pure internal returns(bool, uint, uint, Piece memory) {
         if(startRank > 0) {
             uint rank_iter = startRank - 1;
@@ -274,6 +358,14 @@ library Chess {
         }
     }
 
+    /// @notice Finds the closest piece in: same axial, descending file
+    /// @param rank the rank which remains constant for this axial
+    /// @param startFile the file to start checking from
+    /// @param board the current chessboard state
+    /// @return bool - Whether a piece was found in the way of this axial move
+    /// @return uint - rank of piece found
+    /// @return uint - file of piece found
+    /// @return Piece - the found piece
     function findClosestPieceInLowerFileAxial(uint rank, uint startFile, Board memory board) pure internal returns(bool, uint, uint, Piece memory) {
         if(startFile > 0) {
             uint file_iter = startFile - 1;
@@ -291,15 +383,23 @@ library Chess {
         }
     }
 
+    /// @notice Finds the closest piece in: ascending axial, same file
+    /// @param startRank the rank to start checking from
+    /// @param file the file which remains constant for this axial
+    /// @param board the current chessboard state
+    /// @return bool - Whether a piece was found in the way of this axial move
+    /// @return uint - rank of piece found
+    /// @return uint - file of piece found
+    /// @return Piece - the found piece
     function findClosestPieceInUpperRankAxial(uint startRank, uint file, Board memory board) pure internal returns(bool, uint, uint, Piece memory) {
-        if(startRank < 7) {
+        if(startRank < MAX_RANK) {
             uint rank_iter = startRank + 1;
 
-            while (rank_iter <= 7) {
+            while (rank_iter <= MAX_RANK) {
                 if(board.squares[rank_iter][file].isOccupied) {
                     return (true, rank_iter, file, board.squares[rank_iter][file].piece);
                 }
-                if(rank_iter < 7) {
+                if(rank_iter < MAX_RANK) {
                     rank_iter++;
                 } else {
                     return (false, 0, 0, board.squares[rank_iter][file].piece);
@@ -308,15 +408,23 @@ library Chess {
         }
     }
 
+    /// @notice Finds the closest piece in: same axial, ascending file
+    /// @param rank the rank which remains constant for this axial
+    /// @param startFile the file to start checking from
+    /// @param board the current chessboard state
+    /// @return bool - Whether a piece was found in the way of this axial move
+    /// @return uint - rank of piece found
+    /// @return uint - file of piece found
+    /// @return Piece - the found piece
     function findClosestPieceInUpperFileAxial(uint rank, uint startFile, Board memory board) pure internal returns(bool, uint, uint, Piece memory) {
-        if(startFile < 7) {
+        if(startFile < MAX_FILE) {
             uint file_iter = startFile + 1;
 
-            while (file_iter <= 7) {
+            while (file_iter <= MAX_FILE) {
                 if(board.squares[rank][file_iter].isOccupied) {
                     return (true, rank, file_iter, board.squares[rank][file_iter].piece);
                 }
-                if(file_iter < 7 ){
+                if(file_iter < MAX_FILE ){
                     file_iter++;
                 } else {
                     return (false, 0, 0, board.squares[rank][file_iter].piece);
@@ -326,6 +434,14 @@ library Chess {
         }
     }
 
+    /// @notice Finds the closest piece in: descending axial, descending file
+    /// @param startRank the rank to start checking from
+    /// @param startFile the file to start checking from
+    /// @param board the current chessboard state
+    /// @return bool - Whether a piece was found in the way of this diagonal move
+    /// @return uint - rank of piece found
+    /// @return uint - file of piece found
+    /// @return Piece - the found piece
     function findClosestPieceInBackwardLeftDiagonal(uint startRank, uint startFile, Board memory board) pure internal returns(bool, uint, uint, Piece memory) {
         if(startRank > 0 && startFile > 0) {
             uint rank_iter = startRank - 1;
@@ -345,16 +461,24 @@ library Chess {
         }
     }
 
+    /// @notice Finds the closest piece in: descending axial, ascending file
+    /// @param startRank the rank to start checking from
+    /// @param startFile the file to start checking from
+    /// @param board the current chessboard state
+    /// @return bool - Whether a piece was found in the way of this diagonal move
+    /// @return uint - rank of piece found
+    /// @return uint - file of piece found
+    /// @return Piece - the found piece
     function findClosestPieceInBackwardRightDiagonal(uint startRank, uint startFile, Board memory board) pure internal returns(bool, uint, uint, Piece memory) {
-        if(startRank > 0 && startFile < 7) {
+        if(startRank > 0 && startFile < MAX_FILE) {
             uint rank_iter = startRank - 1;
             uint file_iter = startFile + 1;
 
-            while (rank_iter >= 0 && file_iter <= 7) {
+            while (rank_iter >= 0 && file_iter <= MAX_FILE) {
                 if(board.squares[rank_iter][file_iter].isOccupied) {
                     return (true, rank_iter, file_iter, board.squares[rank_iter][file_iter].piece);
                 }
-                if(rank_iter > 0 && file_iter < 7) {
+                if(rank_iter > 0 && file_iter < MAX_FILE) {
                     rank_iter--;
                     file_iter++;
                 } else {
@@ -364,16 +488,24 @@ library Chess {
         }
     }
 
+    /// @notice Finds the closest piece in: ascending axial, ascending file
+    /// @param startRank the rank to start checking from
+    /// @param startFile the file to start checking from
+    /// @param board the current chessboard state
+    /// @return bool - Whether a piece was found in the way of this diagonal move
+    /// @return uint - rank of piece found
+    /// @return uint - file of piece found
+    /// @return Piece - the found piece
     function findClosestPieceInForwardRightDiagonal(uint startRank, uint startFile, Board memory board) pure internal returns(bool, uint, uint, Piece memory) {
-        if(startRank < 7 && startFile < 7) {
+        if(startRank < MAX_RANK && startFile < MAX_FILE) {
             uint rank_iter = startRank + 1;
             uint file_iter = startFile + 1;
 
-            while (rank_iter <= 7 && file_iter <= 7) {
+            while (rank_iter <= MAX_RANK && file_iter <= MAX_FILE) {
                 if(board.squares[rank_iter][file_iter].isOccupied) {
                     return (true, rank_iter, file_iter, board.squares[rank_iter][file_iter].piece);
                 }
-                if(rank_iter < 7 && file_iter < 7) {
+                if(rank_iter < MAX_RANK && file_iter < MAX_FILE) {
                     rank_iter++;
                     file_iter++;
                 } else {
@@ -383,16 +515,24 @@ library Chess {
         }
     }
 
+    /// @notice Finds the closest piece in: ascending axial, descending file
+    /// @param startRank the rank to start checking from
+    /// @param startFile the file to start checking from
+    /// @param board the current chessboard state
+    /// @return bool - Whether a piece was found in the way of this diagonal move
+    /// @return uint - rank of piece found
+    /// @return uint - file of piece found
+    /// @return Piece - the found piece
     function findClosestPieceInForwardLeftDiagonal(uint startRank, uint startFile, Board memory board) pure internal returns(bool, uint, uint, Piece memory) {
-        if(startRank < 7 && startFile > 0) {
+        if(startRank < MAX_RANK && startFile > 0) {
             uint rank_iter = startRank + 1;
             uint file_iter = startFile - 1;
 
-            while (rank_iter <= 7 && file_iter >= 0) {
+            while (rank_iter <= MAX_RANK && file_iter >= 0) {
                 if(board.squares[rank_iter][file_iter].isOccupied) {
                     return (true, rank_iter, file_iter, board.squares[rank_iter][file_iter].piece);
                 }
-                if(rank_iter < 7 && file_iter > 0) {
+                if(rank_iter < MAX_RANK && file_iter > 0) {
                     rank_iter++;
                     file_iter--;
                 } else {
@@ -402,52 +542,67 @@ library Chess {
         }
     }
 
-    function knightThreatensPosition(uint rankPos, uint filePos, Board memory board, PlayerSide side) internal pure returns (bool) {
+    /// @notice Determine if a knight is threatening the given postion
+    /// @param rank the rank of the square to check
+    /// @param file the file of the square to check
+    /// @param board the current chessboard state
+    /// @param side the player colour of the piece we are checking
+    /// @return bool - Whether a knight is threatening this position
+    function knightThreatensPosition(uint rank, uint file, Board memory board, PlayerSide side) internal pure returns (bool) {
         BoardSquare memory squareToCheck;
-        if(rankPos < 7 && filePos > 1) {
-            squareToCheck = board.squares[rankPos+1][filePos-2];
+
+        if(rank < MAX_RANK && file > 1) {
+            squareToCheck = board.squares[rank+1][file-2];
             if(squareToCheck.isOccupied && squareToCheck.piece.pieceType == PieceType.Knight && squareToCheck.piece.side != side) return true;
         }
 
-        if(rankPos > 0 && filePos > 1) {
-            squareToCheck = board.squares[rankPos-1][filePos-2];
+        if(rank > 0 && file > 1) {
+            squareToCheck = board.squares[rank-1][file-2];
             if(squareToCheck.isOccupied && squareToCheck.piece.pieceType == PieceType.Knight && squareToCheck.piece.side != side) return true;
         }
 
-        if(rankPos > 1 && filePos > 0) {
-            squareToCheck = board.squares[rankPos-2][filePos-1];
+        if(rank > 1 && file > 0) {
+            squareToCheck = board.squares[rank-2][file-1];
             if(squareToCheck.isOccupied && squareToCheck.piece.pieceType == PieceType.Knight && squareToCheck.piece.side != side) return true;
         }
 
-        if(rankPos > 1 && filePos < 7) {
-            squareToCheck = board.squares[rankPos-2][filePos+1];
+        if(rank > 1 && file < MAX_FILE) {
+            squareToCheck = board.squares[rank-2][file+1];
             if(squareToCheck.isOccupied && squareToCheck.piece.pieceType == PieceType.Knight && squareToCheck.piece.side != side) return true;
         }
 
-        if(rankPos < 7 && filePos < 6) {
-            squareToCheck = board.squares[rankPos+1][filePos+2];
+        if(rank < MAX_RANK && file < 6) {
+            squareToCheck = board.squares[rank+1][file+2];
             if(squareToCheck.isOccupied && squareToCheck.piece.pieceType == PieceType.Knight && squareToCheck.piece.side != side) return true;
         }
 
-        if(rankPos > 0 && filePos < 6) {
-            squareToCheck = board.squares[rankPos-1][filePos+2];
+        if(rank > 0 && file < 6) {
+            squareToCheck = board.squares[rank-1][file+2];
             if(squareToCheck.isOccupied && squareToCheck.piece.pieceType == PieceType.Knight && squareToCheck.piece.side != side) return true;
         }
 
-        if(rankPos < 6 && filePos > 0) {
-            squareToCheck = board.squares[rankPos+2][filePos-1];
+        if(rank < 6 && file > 0) {
+            squareToCheck = board.squares[rank+2][file-1];
             if(squareToCheck.isOccupied && squareToCheck.piece.pieceType == PieceType.Knight && squareToCheck.piece.side != side) return true;
         }
 
-        if(rankPos < 6 && filePos < 7) {
-            squareToCheck = board.squares[rankPos+2][filePos+1];
+        if(rank < 6 && file < MAX_FILE) {
+            squareToCheck = board.squares[rank+2][file+1];
             if(squareToCheck.isOccupied && squareToCheck.piece.pieceType == PieceType.Knight && squareToCheck.piece.side != side) return true;
         }
+
         return false;
     }
 
-    function checkKingState(uint rankPos, uint filePos, Game memory game, Player memory player) internal pure returns(bool, bool) {
-        if(!positionIsThreatened(rankPos, filePos, game.board, player.side)) {
+    /// @notice Get the state of the king denoted by the position given
+    /// @param rank the current rank of the king
+    /// @param file the current file of the king
+    /// @param board the current state of the board
+    /// @param side the player colour of the king to check
+    /// @return bool - whether the king is in check
+    /// @return bool - whether the king has been checkmated
+    function checkKingState(uint rank, uint file, Board memory board, PlayerSide side) internal pure returns(bool, bool) {
+        if(!positionIsThreatened(rank, file, board, side)) {
             return (false, false);
         }
 
@@ -455,12 +610,12 @@ library Chess {
             for(int i2 = -1; i2 <= 1; i2 ++) {
                 if(i1 == 0 && i2 == 0) continue;
 
-                int newRankPos = int(rankPos) + i1;
-                int newFilePos = int(filePos) + i2;
+                int newRankPos = int(rank) + i1;
+                int newFilePos = int(file) + i2;
 
-                bool validPositionToCheck = newRankPos >= 0 && newRankPos <= 7 && newFilePos >= 0 && newFilePos <= 7;
+                bool validPositionToCheck = newRankPos >= 0 && newRankPos <= int(MAX_RANK) && newFilePos >= 0 && newFilePos <= int(MAX_FILE);
 
-                if(validPositionToCheck && !positionIsThreatened(uint(newRankPos), uint(newFilePos), game.board, player.side)) {
+                if(validPositionToCheck && !positionIsThreatened(uint(newRankPos), uint(newFilePos), board, side)) {
                     return (true, false);
                 }
             }
@@ -469,24 +624,35 @@ library Chess {
         return (true, true);
     }
 
-    function getPositionDiff(uint prevRankPos, uint prevFilePos, uint newRankPos, uint newFilePos) internal pure returns (uint rankPosDiff, uint filePosDiff) {
-        if(prevRankPos > newRankPos) {
-            rankPosDiff = prevRankPos - newRankPos;
-        } else if(prevRankPos < newRankPos) {
-            rankPosDiff = newRankPos - prevRankPos;
+    /// @notice Get the change in position of the two positions given
+    /// @param prevRank previous rank of the piece to move
+    /// @param prevFile previous file of the piece to move
+    /// @param newRank new rank to move this piece to
+    /// @param newFile new file to move this piece to
+    /// @return rankPosDiff - the difference in rank of the two positions
+    /// @return filePosDiff - the difference in file of the two positions
+    function getPositionDiff(uint prevRank, uint prevFile, uint newRank, uint newFile) internal pure returns (uint rankPosDiff, uint filePosDiff) {
+        if(prevRank > newRank) {
+            rankPosDiff = prevRank - newRank;
+        } else if(prevRank < newRank) {
+            rankPosDiff = newRank - prevRank;
         } else {
             rankPosDiff = 0;
         }
 
-        if(prevFilePos > newFilePos) {
-            filePosDiff = prevFilePos - newFilePos;
-        } else if(prevFilePos < newFilePos) {
-            filePosDiff = newFilePos - prevFilePos;
+        if(prevFile > newFile) {
+            filePosDiff = prevFile - newFile;
+        } else if(prevFile < newFile) {
+            filePosDiff = newFile - prevFile;
         } else {
             filePosDiff = 0;
         }
     }
 
+    /// @notice Get the opposite side of the one given
+    /// @dev a simple utility function
+    /// @param playerSide The player side given
+    /// @return PlayerSide - the opposite of the one given
     function getOtherSide(PlayerSide playerSide) pure internal returns(PlayerSide) {
         if(playerSide == PlayerSide.White) return PlayerSide.Black;
         else if(playerSide == PlayerSide.Black) return PlayerSide.White;

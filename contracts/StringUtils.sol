@@ -1,5 +1,7 @@
 pragma solidity ^0.6.0;
 
+/// @title String utils
+/// @author Christopher Givelas
 library StringUtils {
     function strConcat(string memory _a, string memory _b) internal pure returns (string memory _concatenatedString) {
         string[] memory strings = new string[](2);

@@ -4,6 +4,8 @@ import "truffle/Assert.sol";
 import "truffle/DeployedAddresses.sol";
 import "../contracts/StringUtils.sol";
 
+/// @title Unit tests for the String Utils library
+/// @author Christopher Givelas
 contract TestStringUtils {
     function testStrConcat() public {
         Assert.equal(StringUtils.strConcat("Hello ", "World!"), "Hello World!", "Incorrect string returned");

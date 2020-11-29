@@ -3,6 +3,8 @@ pragma solidity ^0.6.0;
 import "./StandardGame.sol";
 import "./Chess.sol";
 
+/// @title A utility contract for unit testing. Simulates a player making moves
+/// @author Christopher Givelas
 contract PlayerProxy {
     address standardGameAddress;
 

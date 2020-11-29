@@ -10,5 +10,5 @@ module.exports = function (deployer) {
     deployer.link(Chess, StandardGame);
 
     // Deploy chain chess with maxGames constructor argument
-    deployer.deploy(StandardGame, 6);
+    deployer.deploy(StandardGame);
 };
