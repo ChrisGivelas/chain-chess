@@ -10,7 +10,7 @@ contract StandardGame {
     mapping(uint => Chess.Game) games;
     mapping(address => PlayerProfile) players;
 
-    event PieceMove(uint indexed gameId, address indexed player, address indexed playerMakingMove, string moveHistory);
+    event PieceMove(uint indexed gameId, address indexed playerMakingMove, address indexed player, string moveHistory, Chess.PlayerSide nextTurn);
     event GameStart(uint indexed gameId, address indexed address1, address address2);
     event Checkmate(uint indexed gameId, address indexed winner, address indexed loser);
 
@@ -149,7 +149,8 @@ contract StandardGame {
     function movePiece(uint gameId, uint prevRankPos, uint prevFilePos, uint newRankPos, uint newFilePos) public returns (string memory) {
         Chess.Game storage game = games[gameId];
         Chess.Player storage currentPlayer = game.board.players[msg.sender];
-        Chess.Player storage otherPlayer = game.board.players[game.board.playerSides[uint(Chess.getOtherSide(currentPlayer.side))]];
+        Chess.PlayerSide otherSide = Chess.getOtherSide(currentPlayer.side);
+        Chess.Player storage otherPlayer = game.board.players[game.board.playerSides[uint(otherSide)]];
         Chess.BoardSquare storage selectedSquare = game.board.squares[prevRankPos][prevFilePos];
         Chess.BoardSquare storage squareToMoveTo = game.board.squares[newRankPos][newFilePos];
 
@@ -172,8 +173,8 @@ contract StandardGame {
 
         game.moveCount++;
 
-        emit PieceMove(gameId, msg.sender, msg.sender, game.moveHistory);
-        emit PieceMove(gameId, game.board.playerSides[uint(Chess.getOtherSide(currentPlayer.side))], msg.sender, game.moveHistory);
+        emit PieceMove(gameId, msg.sender, msg.sender, game.moveHistory, otherSide);
+        emit PieceMove(gameId, game.board.playerSides[uint(otherSide)], msg.sender, game.moveHistory, otherSide);
 
         return moveHistoryEntry;
     }

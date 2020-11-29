@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Box, Button, Modal, Card, Heading, Flex, Loader } from "rimble-ui";
 import { useHistory } from "react-router-dom";
 import { getGameByOpponent, acceptGame } from "../standardGame";
+import { getShortenedAddress } from "../utils/eth";
 
 function AcceptGameModal({
     OpenModalComponent,
@@ -59,10 +60,7 @@ function AcceptGameModal({
                     <Box p={4} mb={3}>
                         <Heading>
                             Accept game with{" "}
-                            <span className="short-address">
-                                {opponentAddress}
-                            </span>
-                            ?
+                            {getShortenedAddress(opponentAddress)}?
                         </Heading>
                     </Box>
 

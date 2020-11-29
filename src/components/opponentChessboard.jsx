@@ -1,11 +1,11 @@
-import { getAddressBlockie } from "../utils/eth";
+import { getAddressBlockie, getShortenedAddress } from "../utils/eth";
 import Chessboard from "chessboardjsx";
 
 function OpponentChessboard({ opponentAddress, onClick }) {
     return (
         <div className="opponent-chessboard">
             <div onClick={onClick} className="blockie-holder">
-                <p className="short-address">{opponentAddress}</p>
+                <span>{getShortenedAddress(opponentAddress)}</span>
                 {getAddressBlockie(opponentAddress)}
             </div>
             <div className="chessboard-holder blurred">

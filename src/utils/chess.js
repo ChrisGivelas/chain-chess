@@ -16,11 +16,8 @@ export const getFileIndexFromVal = (i) =>
         return f === i;
     });
 
-export const getGameChessboard = (moveHistory = "", chess = null) => {
-    var c;
-
-    if (chess !== null) c = chess;
-    else c = new Chess();
+export const getGameChessboard = (moveHistory = "") => {
+    var c = new Chess();
 
     if (moveHistory.length > 0) {
         moveHistory.split(",").forEach((moveEntry) => {

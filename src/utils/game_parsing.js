@@ -1,54 +1,51 @@
 import { checksumAddr } from "./eth";
 
-const PLAYER_SIDE_MAPPING = ["none", "white", "black"];
+export const PLAYER_SIDE_MAPPING = ["None", "White", "Black"];
 
-export function parseGameResponse(game) {
+export const parseBasicInfoResponse = (basicInfo) => {
     const {
         gameId,
         moveHistory,
-        currentTurn,
-        started,
-        ended,
         whiteAddress,
         blackAddress,
-        winner,
-        inCheck,
-        moveCount,
-    } = game;
-
-    let mappedTurn =
-        PLAYER_SIDE_MAPPING[window.web3.utils.toDecimal(currentTurn)];
-    let mappedCheck = PLAYER_SIDE_MAPPING[window.web3.utils.toDecimal(inCheck)];
-
-    let normalizedWhiteAddress = checksumAddr(whiteAddress);
-    let normalizedBlackAddress = checksumAddr(blackAddress);
-    let normalizedWinnerAddress = checksumAddr(winner);
+        currentTurn,
+        started,
+    } = basicInfo;
 
     return {
         gameId: window.web3.utils.toDecimal(gameId),
         moveHistory,
-        currentTurn: mappedTurn,
-        started,
-        ended,
         white: {
-            address: normalizedWhiteAddress,
-            side: "white",
-            isPlayersTurn: mappedTurn === "white",
-            isInCheck: mappedCheck === "white",
-            isWinner: normalizedWhiteAddress === normalizedWinnerAddress,
+            address: checksumAddr(whiteAddress),
         },
         black: {
-            address: normalizedBlackAddress,
-            side: "black",
-            isPlayersTurn: mappedTurn === "black",
-            isInCheck: mappedCheck === "black",
-            isWinner: normalizedBlackAddress === normalizedWinnerAddress,
+            address: checksumAddr(blackAddress),
         },
-        winner: normalizedWinnerAddress,
-        inCheck: mappedCheck,
+        currentTurn:
+            PLAYER_SIDE_MAPPING[window.web3.utils.toDecimal(currentTurn)],
+        started,
+    };
+};
+
+export const parseEndGameInfoResponse = (endGameInfo) => {
+    const { inCheck, ended, winner, moveCount } = endGameInfo;
+
+    return {
+        inCheck: PLAYER_SIDE_MAPPING[window.web3.utils.toDecimal(inCheck)],
+        ended,
+        winner: checksumAddr(winner),
         moveCount: window.web3.utils.toDecimal(moveCount),
     };
-}
+};
+
+export const parseGameResponse = (game) => {
+    const basicInfo = parseBasicInfoResponse(game);
+    const endGameInfo = parseEndGameInfoResponse(game);
+    return {
+        ...basicInfo,
+        ...endGameInfo,
+    };
+};
 
 export function getPlayerInfoFromGame(game, side) {
     if (!game) {

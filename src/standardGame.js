@@ -85,6 +85,8 @@ export const movePiece = (
     const [prevFilePos, prevRankPos] = sourceSquare.split("");
     const [newFilePos, newRankPos] = targetSquare.split("");
 
+    console.log(sourceSquare, " => ", targetSquare);
+
     return window.cc_standardGameContract.deployed().then(async (instance) => {
         return await instance.movePiece(
             gameId,

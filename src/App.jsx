@@ -3,12 +3,9 @@ import "./App.css";
 import { updateWeb3AndReturnWeb3Provider, checksumAddr } from "./utils/eth";
 import { getStandardGameContract } from "./standardGame";
 import { Route, Switch, withRouter, Redirect } from "react-router-dom";
-import { PrivateRoute } from "./utils/route";
+import { PrivateRoutes } from "./utils/route";
 import Landing from "./views/Landing";
-import ActiveGames from "./views/ActiveGames";
-import GameSearch from "./views/GameSearch";
-import Profile from "./views/Profile";
-import Game from "./views/Game";
+
 import Nav from "./components/nav";
 
 class App extends React.Component {
@@ -147,25 +144,11 @@ class App extends React.Component {
                                 )
                             }
                         />
-                        <PrivateRoute
-                            path="/search"
-                            {...privateRouteProps}
-                            Component={GameSearch}
-                        />
-                        <PrivateRoute
-                            path="/activeGames"
-                            {...privateRouteProps}
-                            Component={ActiveGames}
-                        />
-                        <PrivateRoute
-                            path="/profile/:profileAddress?"
-                            {...privateRouteProps}
-                            Component={Profile}
-                        />
-                        <PrivateRoute
-                            path="/game/:gameId?"
-                            {...privateRouteProps}
-                            Component={Game}
+                        <PrivateRoutes
+                            connectedWalletAddress={
+                                this.state.connectedWalletAddress
+                            }
+                            privateRouteProps={privateRouteProps}
                         />
                     </Switch>
                 </div>

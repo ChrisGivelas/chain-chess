@@ -1,44 +1,56 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React from "react";
 import Chessboard from "chessboardjsx";
-// import { Chess } from "chess.js";
-import { useParams, useLocation } from "react-router-dom";
 import { getGameByGameId, movePiece } from "../standardGame";
 import { getGameChessboard } from "../utils/chess";
 import { Card } from "rimble-ui";
-import { getAddressBlockie } from "../utils/eth";
-import { useMovePieceSubscription } from "../hooks/events";
+import { getAddressBlockie, getShortenedAddress } from "../utils/eth";
 import Chess from "chess.js";
-
 import BlackKing from "../assets/bk";
 import WhiteKing from "../assets/wk";
+import { withRouter } from "react-router-dom";
 
-function Game({ connectedWalletAddress }) {
-    const { gameId } = useParams();
-    const { state } = useLocation();
-    const [gameInfo, setGameInfo] = useState(null);
-    const [chessboard, setChessboard] = useState({
-        chess: new Chess(),
-        positions: {},
-    });
-    const moveHistory = useMovePieceSubscription(
-        connectedWalletAddress,
-        gameId
-    );
+class Game extends React.Component {
+    constructor(props) {
+        super(props);
 
-    const updateChessboard = useCallback(
-        (moveHistory) => {
-            setChessboard(getGameChessboard(moveHistory, chessboard.chess));
-        },
-        [chessboard.chess]
-    );
+        this.state = {
+            gameInfo: null,
+            chessboard: {
+                chess: new Chess(),
+                positions: {},
+            },
+        };
+    }
 
-    useEffect(() => {
-        if (moveHistory !== null) {
-            updateChessboard(moveHistory);
-        }
-    }, [moveHistory, updateChessboard]);
+    async componentDidMount() {
+        var that = this;
 
-    const onDrop = ({ sourceSquare, targetSquare }) => {
+        const {
+            connectedWalletAddress,
+            match: {
+                params: { gameId },
+            },
+        } = this.props;
+
+        getGameByGameId(connectedWalletAddress, gameId).then((game) => {
+            that.setState({
+                gameInfo: game,
+                chessboard: getGameChessboard(game.moveHistory),
+            });
+        });
+    }
+
+    onDrop = ({ sourceSquare, targetSquare }) => {
+        const that = this;
+
+        const { chessboard } = this.state;
+        const {
+            connectedWalletAddress,
+            match: {
+                params: { gameId },
+            },
+        } = this.props;
+
         let move = chessboard.chess.move({
             from: sourceSquare,
             to: targetSquare,
@@ -54,8 +66,11 @@ function Game({ connectedWalletAddress }) {
                 sourceSquare,
                 targetSquare
             )
-                .then((success) => {
-                    console.log("Move success:", success);
+                .then(() => getGameByGameId(connectedWalletAddress, gameId))
+                .then((game) => {
+                    that.setState({
+                        gameInfo: game,
+                    });
                 })
                 .catch((err) => {
                     console.log("Move failed:", err);
@@ -63,78 +78,66 @@ function Game({ connectedWalletAddress }) {
         }
     };
 
-    useEffect(() => {
-        if (gameInfo === null) {
-            if (state && state.gameInfo) {
-                updateChessboard(state.gameInfo.moveHistory);
-                setGameInfo(state.gameInfo);
-            } else {
-                getGameByGameId(connectedWalletAddress, gameId).then((game) => {
-                    setGameInfo(game);
-                    updateChessboard(game.moveHistory);
-                });
-            }
-        }
-    }, [
-        gameId,
-        state,
-        gameInfo,
-        setGameInfo,
-        connectedWalletAddress,
-        updateChessboard,
-    ]);
-
-    return (
-        <React.Fragment>
-            {gameInfo && (
-                <div className="game-players">
-                    <div className="player-card-holder">
-                        <Card width="auto" maxWidth="420px">
-                            {gameInfo.black.address ===
-                                connectedWalletAddress && (
-                                <h3
-                                    style={{ color: "black", marginBottom: 10 }}
-                                >
-                                    You
-                                </h3>
-                            )}
-                            {getAddressBlockie(gameInfo.black.address)}
-                            <p
-                                className="short-address"
-                                style={{ marginLeft: 15 }}
-                            >
-                                {gameInfo.black.address}
-                            </p>
-                            <BlackKing />
-                        </Card>
+    render() {
+        const { gameInfo, chessboard } = this.state;
+        const { connectedWalletAddress } = this.props;
+        return (
+            <React.Fragment>
+                {gameInfo && gameInfo.black && gameInfo.white && (
+                    <div className="game-players">
+                        <div className="player-card-holder">
+                            <Card width="auto" maxWidth="420px">
+                                {gameInfo.black.address ===
+                                    connectedWalletAddress && (
+                                    <h3
+                                        style={{
+                                            color: "black",
+                                            marginBottom: 10,
+                                        }}
+                                    >
+                                        You
+                                    </h3>
+                                )}
+                                {getAddressBlockie(gameInfo.black.address)}
+                                {getShortenedAddress(gameInfo.black.address)}
+                                <BlackKing />
+                            </Card>
+                        </div>
+                        <div className="player-card-holder">
+                            <Card width="auto" maxWidth="420px">
+                                {gameInfo.white.address ===
+                                    connectedWalletAddress && (
+                                    <h3
+                                        style={{
+                                            color: "black",
+                                            marginBottom: 10,
+                                        }}
+                                    >
+                                        You
+                                    </h3>
+                                )}
+                                {getAddressBlockie(gameInfo.white.address)}
+                                {getShortenedAddress(gameInfo.white.address)}
+                                <WhiteKing />
+                            </Card>
+                        </div>
                     </div>
-                    <div className="player-card-holder">
-                        <Card width="auto" maxWidth="420px">
-                            {gameInfo.white.address ===
-                                connectedWalletAddress && (
-                                <h3
-                                    style={{ color: "black", marginBottom: 10 }}
-                                >
-                                    You
-                                </h3>
-                            )}
-                            {getAddressBlockie(gameInfo.white.address)}
-                            <p
-                                className="short-address"
-                                style={{ marginLeft: 15 }}
-                            >
-                                {gameInfo.white.address}
-                            </p>
-                            <WhiteKing />
-                        </Card>
-                    </div>
+                )}
+                <div className="game">
+                    {gameInfo &&
+                        (gameInfo.ended ? (
+                            <h3>{`${gameInfo.currentTurn} is the winner!`}</h3>
+                        ) : (
+                            <h3>{`It is ${gameInfo.currentTurn}'s turn.`}</h3>
+                        ))}
+                    <Chessboard
+                        position={chessboard.positions}
+                        onDrop={this.onDrop}
+                    />
                 </div>
-            )}
-            <div className="game">
-                <Chessboard position={chessboard.positions} onDrop={onDrop} />
-            </div>
-        </React.Fragment>
-    );
+            </React.Fragment>
+        );
+    }
 }
 
-export default Game;
+export default withRouter(Game);

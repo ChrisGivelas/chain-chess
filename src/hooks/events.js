@@ -1,82 +1,43 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import {
-    gameStartedToast,
-    moveTurnToast,
-    checkmatedToast,
-} from "../utils/toast";
+import { pieceMoveToast } from "../utils/toast";
+import { PLAYER_SIDE_MAPPING } from "../utils/game_parsing";
 
-export function useMovePieceSubscription(
-    connectedWalletAddress,
-    gameId = null
-) {
-    const [moveHistory, setMoveHistory] = useState("");
-    const location = useLocation();
-
-    useEffect(() => {
-        let filter = { player: connectedWalletAddress };
-        if (gameId !== null) {
-            filter.gameId = gameId;
-        }
-
-        window.cc_standardGameContract.deployed().then((instance) => {
-            instance.PieceMove(
-                {
-                    filter,
-                    fromBlock: 0,
-                },
-                function (err, e) {
-                    const newMoveHistory = e.returnValues.moveHistory;
-                    setMoveHistory(newMoveHistory);
-
-                    if (location.pathname.indexOf("/game") !== -1) {
-                        moveTurnToast(
-                            e.returnValues.gameId,
-                            e.returnValues.playerMakingMove
-                        );
-                    }
-                }
-            );
-        });
-    }, [connectedWalletAddress, location.pathname, gameId]);
-
-    return moveHistory;
+export function Subscribe_PieceMove(filter, callback) {
+    console.log("Subscribe_PieceMove");
+    return window.cc_standardGameContract.deployed().then(async (instance) => {
+        return await instance.PieceMove(
+            {
+                filter,
+                fromBlock: "pending",
+            },
+            callback
+        );
+    });
 }
 
-export function useGameStartedSubscription(connectedWalletAddress) {
-    useEffect(() => {
-        window.cc_standardGameContract.deployed().then((instance) => {
-            instance.GameStart(
-                {
-                    filter: { address1: connectedWalletAddress },
-                    fromBlock: 0,
-                },
-                function (err, e) {
-                    gameStartedToast(
-                        e.returnValues.gameId,
-                        e.returnValues.address2
-                    );
-                }
-            );
-        });
-    }, [connectedWalletAddress]);
+export function Subscribe_GameStart(filter, callback) {
+    console.log("Subscribe_GameStart");
+    return window.cc_standardGameContract.deployed().then(async (instance) => {
+        return await instance.GameStart(
+            {
+                filter,
+                fromBlock: "pending",
+            },
+            callback
+        );
+    });
 }
 
-export function useCheckmateSubscription(connectedWalletAddress) {
-    useEffect(() => {
-        window.cc_standardGameContract.deployed().then((instance) => {
-            instance.Checkmate(
-                {
-                    filter: { loser: connectedWalletAddress },
-                    fromBlock: 0,
-                },
-                function (err, e) {
-                    checkmatedToast(
-                        e.returnValues.gameId,
-                        e.returnValues.winner
-                    );
-                }
-            );
-        });
-    }, [connectedWalletAddress]);
+export function Subscribe_Checkmate(filter, callback) {
+    console.log("Subscribe_Checkmate");
+    return window.cc_standardGameContract.deployed().then(async (instance) => {
+        return await instance.Checkmate(
+            {
+                filter,
+                fromBlock: "pending",
+            },
+            callback
+        );
+    });
 }

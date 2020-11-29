@@ -18,6 +18,8 @@ export const updateWeb3AndReturnWeb3Provider = () => {
 
 export const checksumAddr = (addr) => window.web3.utils.toChecksumAddress(addr);
 
+export const getShortenedAddress = (addr) => `${addr.substring(0, 8)}...`;
+
 export const getAddressBlockie = (addr) => {
     const [color, bgcolor, spotcolor] = randomColor({
         count: 3,

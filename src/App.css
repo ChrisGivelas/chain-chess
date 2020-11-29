@@ -29,7 +29,8 @@
     justify-content: space-evenly;
 }
 
-.nav-link {
+.nav-link,
+.view-game-link {
     text-decoration: none;
     color: white;
 }
@@ -60,6 +61,8 @@ h6 {
     height: fit-content;
     position: relative;
     justify-self: center;
+    color: black;
+    font-weight: bold;
 }
 
 .blockie-holder {
@@ -79,16 +82,8 @@ h6 {
     cursor: pointer;
 }
 
-.short-address {
-    width: 200px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: black;
-    font-weight: bold;
-    display: inline-block;
-    vertical-align: bottom;
-    font-size: 1rem;
+.blockie-holder > span {
+    margin-bottom: 10px;
 }
 
 .blurred {
@@ -105,13 +100,16 @@ h6 {
 
 .game {
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     min-width: 560px; /* chesboardjsx static board size */
+    z-index: 999;
 }
 
 .player-card-holder {
     height: 100%;
+    color: black;
 }
 
 .player-card-holder > div {
@@ -131,4 +129,8 @@ h6 {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.toast-container {
+    background-color: black !important;
 }

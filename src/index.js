@@ -4,16 +4,15 @@ import "./index.css";
 import App from "./App";
 import { createBrowserHistory } from "history";
 import { BrowserRouter } from "react-router-dom";
-import { ToastMessage } from "rimble-ui";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.min.css";
 
 const history = createBrowserHistory();
 
 ReactDOM.render(
     <React.StrictMode>
         <BrowserRouter history={history}>
-            <ToastMessage.Provider
-                ref={(node) => (window.toastProvider = node)}
-            />
+            <ToastContainer />
             <App />
         </BrowserRouter>
     </React.StrictMode>,

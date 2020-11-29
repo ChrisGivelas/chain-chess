@@ -1,35 +1,50 @@
+import React from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
+import { getShortenedAddress } from "./eth";
+import { Button } from "rimble-ui";
 
-export const gameStartedToast = (gameId, opponentAddress) => {
+export const viewGameToast = (gameId, msg, showLink) => {
     var Component = ({ closeToast }) => (
-        <div className="toast-container">
-            <p>{`Game started with ${opponentAddress}!`}</p>
-            <Link to={`/game/${gameId}`}>View Game</Link>
-        </div>
+        <React.Fragment>
+            <p>{msg}</p>
+            {showLink && (
+                <Button>
+                    <Link className="view-game-link" to={`/game/${gameId}`}>
+                        Click to View Game
+                    </Link>
+                </Button>
+            )}
+        </React.Fragment>
     );
 
-    toast(<Component />);
+    toast.info(<Component />, {
+        className: "toast-container",
+        position: "bottom-right",
+        autoClose: false,
+    });
 };
 
-export const moveTurnToast = (gameId, opponentAddress) => {
-    var Component = ({ closeToast }) => (
-        <div className="toast-container">
-            <p>{`${opponentAddress} made a move!`}</p>
-            <Link to={`/game/${gameId}`}>View Game</Link>
-        </div>
+export const gameStartToast = (gameId, opponentAddress, showLink = true) => {
+    viewGameToast(
+        gameId,
+        `Game started with ${getShortenedAddress(opponentAddress)}!`,
+        showLink
     );
-
-    toast(<Component />);
 };
 
-export const checkmatedToast = (gameId, opponentAddress) => {
-    var Component = ({ closeToast }) => (
-        <div className="toast-container">
-            <p>{`${opponentAddress} checkmated you.`}</p>
-            <Link to={`/game/${gameId}`}>View Game</Link>
-        </div>
+export const pieceMoveToast = (gameId, opponentAddress, showLink = true) => {
+    viewGameToast(
+        gameId,
+        `${getShortenedAddress(opponentAddress)} made a move!`,
+        showLink
     );
+};
 
-    toast(<Component />);
+export const checkmateToast = (gameId, opponentAddress, showLink = true) => {
+    viewGameToast(
+        gameId,
+        `${getShortenedAddress(opponentAddress)} checkmated you.`,
+        showLink
+    );
 };

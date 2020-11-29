@@ -35,7 +35,7 @@ function Profile({ connectedWalletAddress }) {
         if (isSearching === null && connectedWalletAddress === profileAddress) {
             userIsSearching(connectedWalletAddress).then(setIsSearching);
         }
-    }, [connectedWalletAddress, isSearching]);
+    }, [connectedWalletAddress, isSearching, profileAddress]);
 
     return (
         playerProfile && (
