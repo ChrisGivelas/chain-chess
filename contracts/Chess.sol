@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 /// @title Library containing fundamental chess validation logic and structs for different concepts of the game
 /// @author Christopher Givelas

@@ -5,18 +5,7 @@ import { getShortenedAddress } from "./eth";
 import { Button } from "rimble-ui";
 
 export const viewGameToast = (gameId, msg, showLink) => {
-    var Component = ({ closeToast }) => (
-        <React.Fragment>
-            <p>{msg}</p>
-            {showLink && (
-                <Button>
-                    <Link className="view-game-link" to={`/game/${gameId}`}>
-                        Click to View Game
-                    </Link>
-                </Button>
-            )}
-        </React.Fragment>
-    );
+    var Component = ({ closeToast }) => <p>{msg}</p>;
 
     toast.info(<Component />, {
         className: "toast-container",

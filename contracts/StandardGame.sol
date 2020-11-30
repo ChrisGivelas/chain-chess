@@ -1,17 +1,33 @@
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 import "./Chess.sol";
 import "./StringUtils.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title Standard Chess Game
 /// @author Christopher Givelas
-contract StandardGame {
+contract StandardGame is Ownable {
+    bool public stopped = false;
+
+    modifier stopInEmergency {
+        require (!stopped);
+        _;
+    }
+
+    function stop() public onlyOwner {
+        stopped = false;
+    }
+
+    function start() public onlyOwner {
+        stopped = true;
+    }
+
     address[] public searchingForNewGame;
     uint gameCount;
     mapping(uint => Chess.Game) games;
     mapping(address => PlayerProfile) players;
 
-    event PieceMove(uint indexed gameId, address indexed playerMakingMove, address indexed player, string moveHistory, Chess.PlayerSide nextTurn);
+    event PieceMove(uint indexed gameId, address indexed playerMakingMove, string moveHistory, Chess.PlayerSide nextTurn);
     event GameStart(uint indexed gameId, address indexed address1, address address2);
     event Checkmate(uint indexed gameId, address indexed winner, address indexed loser);
 
@@ -29,7 +45,7 @@ contract StandardGame {
 
     /// @notice Start searching for game
     /// @return bool - whether the user has successfully started searching for a game
-    function declareSearchingForGame() public returns(bool) {
+    function declareSearchingForGame() public stopInEmergency returns(bool) {
         require(!userIsSearching(msg.sender), "User already searching for new game");
 
         searchingForNewGame.push(msg.sender);
@@ -40,7 +56,7 @@ contract StandardGame {
     /// @notice Check if a user is currently searching for a game
     /// @param playerAddress the address to check for
     /// @return bool - wheather the player is searching
-    function userIsSearching(address playerAddress) public view returns(bool) {
+    function userIsSearching(address playerAddress) public view stopInEmergency returns(bool) {
         for(uint i = 0; i < searchingForNewGame.length; i++) {
             if(searchingForNewGame[i] == playerAddress) {
                 return true;
@@ -53,7 +69,7 @@ contract StandardGame {
     /// @notice Check if `msg.sender` is already playing `otherPlayer`
     /// @param otherPlayer the address of the other player
     /// @return bool - wheather the two players are already playing a game
-    function alreadyPlaying(address otherPlayer) public view returns (bool) {
+    function alreadyPlaying(address otherPlayer) internal view returns (bool) {
         uint[] storage activeGames = players[msg.sender].activeGames;
         
         for(uint i = 0; i < activeGames.length; i++) {
@@ -69,7 +85,7 @@ contract StandardGame {
     /// @notice Accept game with `otherPlayer`
     /// @param otherPlayer the other player to start a game with
     /// @return uint - the game id of the new game created
-    function acceptGame(address otherPlayer) public returns(uint) {
+    function acceptGame(address otherPlayer) public stopInEmergency returns(uint) {
         require(msg.sender != otherPlayer, "Two different players are required to start a new game");
         require(userIsSearching(otherPlayer), "Game does not exist");
         require(!alreadyPlaying(otherPlayer), "Users are already playing");
@@ -89,7 +105,6 @@ contract StandardGame {
         }
 
         emit GameStart(newGame.gameId, msg.sender, otherPlayer);
-        emit GameStart(newGame.gameId, otherPlayer, msg.sender);
 
         return newGame.gameId;
     }
@@ -184,7 +199,7 @@ contract StandardGame {
     /// @param newRank new rank to move this piece to
     /// @param newFile new file to move this piece to
     /// @return string - the valid piece move in algebraic notation (https://en.wikipedia.org/wiki/Algebraic_notation_(chess))
-    function movePiece(uint gameId, uint prevRank, uint prevFile, uint newRank, uint newFile) public returns (string memory) {
+    function movePiece(uint gameId, uint prevRank, uint prevFile, uint newRank, uint newFile) public stopInEmergency returns (string memory) {
         Chess.Game storage game = games[gameId];
         Chess.Player storage currentPlayer = game.board.players[msg.sender];
         Chess.PlayerSide otherSide = Chess.getOtherSide(currentPlayer.side);
@@ -217,8 +232,7 @@ contract StandardGame {
 
         game.moveCount++;
 
-        emit PieceMove(gameId, msg.sender, msg.sender, game.moveHistory, otherSide);
-        emit PieceMove(gameId, game.board.playerSides[uint(otherSide)], msg.sender, game.moveHistory, otherSide);
+        emit PieceMove(gameId, msg.sender, game.moveHistory, otherSide);
 
         return moveHistoryEntry;
     }

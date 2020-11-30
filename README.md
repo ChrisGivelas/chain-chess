@@ -2,7 +2,7 @@
 
 ## Overview
 
-Chain-chess is a decentralized chess game. It allows users to start games with others, store information about win/loss statistics, and validate moves and board states. I chose this idea because I thought the complexity of programming a chess game in solidity would exemplify my skills (and I believe it still does), but I unfortunately am missing some of my original requirements that I think would make this project even better. Originally I intended to add tournament staking functionality and staking for individual games, but implementing the chess logic turned out to be a difficult enough task. I'm intending to add these features in the near future.
+Chain-chess is a decentralized chess game. It allows users to start games with others, store information about win/loss statistics, and validate moves and board states. I chose this idea because I thought the complexity of programming a chess game in solidity would exemplify my skills, but I unfortunately am missing some of my original requirements that I think would make this project even better. Originally I intended to add tournament staking functionality and staking for individual games, but implementing the chess logic turned out to be a difficult enough task. I'm intending to add these features in the near future.
 
 ## Project Structure
 

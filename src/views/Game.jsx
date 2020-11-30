@@ -8,6 +8,7 @@ import Chess from "chess.js";
 import BlackKing from "../assets/bk";
 import WhiteKing from "../assets/wk";
 import { withRouter } from "react-router-dom";
+import { Subscribe_PieceMove } from "../events";
 
 class Game extends React.Component {
     constructor(props) {
@@ -31,6 +32,22 @@ class Game extends React.Component {
                 params: { gameId },
             },
         } = this.props;
+
+        if (!window.MovePieceSubscriptionForGame) {
+            window.MovePieceSubscription = await Subscribe_PieceMove(
+                { player: connectedWalletAddress },
+                (err, e) => {
+                    getGameByGameId(connectedWalletAddress, gameId).then(
+                        (game) => {
+                            that.setState({
+                                gameInfo: game,
+                                chessboard: getGameChessboard(game.moveHistory),
+                            });
+                        }
+                    );
+                }
+            );
+        }
 
         getGameByGameId(connectedWalletAddress, gameId).then((game) => {
             that.setState({
@@ -68,8 +85,10 @@ class Game extends React.Component {
             )
                 .then(() => getGameByGameId(connectedWalletAddress, gameId))
                 .then((game) => {
+                    console.log(game);
                     that.setState({
                         gameInfo: game,
+                        chessboard: getGameChessboard(game.moveHistory),
                     });
                 })
                 .catch((err) => {

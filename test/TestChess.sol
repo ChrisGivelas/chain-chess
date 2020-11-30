@@ -1,8 +1,9 @@
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 import "truffle/Assert.sol";
 import "truffle/DeployedAddresses.sol";
 import "../contracts/Chess.sol";
+
 
 /// @title Unit tests for the Chess library
 /// @author Christopher Givelas

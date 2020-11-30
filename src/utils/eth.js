@@ -24,7 +24,6 @@ export const getAddressBlockie = (addr) => {
     const [color, bgcolor, spotcolor] = randomColor({
         count: 3,
         seed: addr,
-        luminosity: "dark",
     });
     return (
         <Blockie

@@ -13,46 +13,56 @@ import { pieceMoveToast, gameStartToast, checkmateToast } from "../utils/toast";
 
 export const PrivateRoutes = withRouter(
     class extends React.Component {
-        constructor(props) {
-            super(props);
-
-            this.MovePieceSubscription = null;
-            this.GameStartSubscription = null;
-            this.CheckmateSubscription = null;
-        }
-
         async componentDidMount() {
-            const { connectedWalletAddress } = this.props;
+            const {
+                connectedWalletAddress,
+                match: {
+                    params: { gameId },
+                },
+            } = this.props;
 
-            this.MovePieceSubscription = await Subscribe_PieceMove(
-                { player: connectedWalletAddress },
-                (err, e) =>
-                    pieceMoveToast(
-                        e.returnValues.gameId,
-                        e.returnValues.playerMakingMove
-                    )
-            );
+            if (!window.MovePieceSubscription) {
+                window.MovePieceSubscription = await Subscribe_PieceMove(
+                    { player: connectedWalletAddress },
+                    (err, e) => {
+                        pieceMoveToast(
+                            e.returnValues.gameId,
+                            e.returnValues.playerMakingMove
+                        );
+                    }
+                );
+            }
 
-            this.GameStartSubscription = await Subscribe_GameStart(
-                { address1: connectedWalletAddress },
-                (err, e) =>
-                    gameStartToast(
-                        e.returnValues.gameId,
-                        e.returnValues.address2
-                    )
-            );
+            if (!window.GameStartSubscription) {
+                window.GameStartSubscription = await Subscribe_GameStart(
+                    { address1: connectedWalletAddress },
+                    (err, e) =>
+                        gameStartToast(
+                            e.returnValues.gameId,
+                            e.returnValues.address2
+                        )
+                );
+            }
 
-            this.CheckmateSubscription = await Subscribe_Checkmate(
-                { loser: connectedWalletAddress },
-                (err, e) =>
-                    checkmateToast(e.returnValues.gameId, e.returnValues.winner)
-            );
+            if (!window.CheckmateSubscription) {
+                window.CheckmateSubscription = await Subscribe_Checkmate(
+                    { loser: connectedWalletAddress },
+                    (err, e) =>
+                        checkmateToast(
+                            e.returnValues.gameId,
+                            e.returnValues.winner
+                        )
+                );
+            }
         }
 
         async componentWillUnmount() {
-            this.MovePieceSubscription.unsubscribe();
-            this.GameStartSubscription.unsubscribe();
-            this.CheckmateSubscription.unsubscribe();
+            await window.MovePieceSubscription.unsubscribe();
+            window.MovePieceSubscription = undefined;
+            await window.GameStartSubscription.unsubscribe();
+            window.GameStartSubscription = undefined;
+            await window.CheckmateSubscription.unsubscribe();
+            window.CheckmateSubscription = undefined;
         }
 
         render() {
