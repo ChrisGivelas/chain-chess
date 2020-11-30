@@ -1,8 +1,9 @@
-*All contracts are deployed on ropsten*
-
+All contracts are deployed on ropsten.
 
 Contract Address                             |  Contract Name
 ================================================================    
 0x4941A56D78381C3AbC40EE91bEa0e4f2101Aeeb4   |  StringUtils.sol
 0x6Dd201B2685F0525fABc2828FA452a14B5473611   |  Chess.sol
 0x278c1242FED781378316fD5057d3f48880f1bDc5   |  StandardGame.sol
+
+*Note: https://ropsten.etherscan.io/verifyContract does not load for me, so I was not able to verify my contract on etherscan
