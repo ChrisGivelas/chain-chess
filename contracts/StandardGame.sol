@@ -27,8 +27,8 @@ contract StandardGame is Ownable {
     mapping(uint => Chess.Game) games;
     mapping(address => PlayerProfile) players;
 
-    event PieceMove(uint indexed gameId, address indexed playerMakingMove, string moveHistory, Chess.PlayerSide nextTurn);
-    event GameStart(uint indexed gameId, address indexed address1, address address2);
+    event PieceMove(uint indexed gameId, address indexed playerMakingMove, address indexed otherPlayer, string moveHistoryEntry, Chess.PlayerSide nextTurn);
+    event GameStart(uint indexed gameId, address indexed address1, address indexed address2);
     event Checkmate(uint indexed gameId, address indexed winner, address indexed loser);
 
     struct PlayerProfile {
@@ -232,7 +232,7 @@ contract StandardGame is Ownable {
 
         game.moveCount++;
 
-        emit PieceMove(gameId, msg.sender, game.moveHistory, otherSide);
+        emit PieceMove(gameId, msg.sender, game.board.playerSides[uint(otherSide)], moveHistoryEntry, otherSide);
 
         return moveHistoryEntry;
     }

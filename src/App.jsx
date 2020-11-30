@@ -51,7 +51,7 @@ class App extends React.Component {
 
         that.refreshEthUtilsIfNecessary();
 
-        window.ethereum.on("accountsChanged", async function () {
+        window.ethereum.on("accountsChanged", function () {
             console.log("accounts changed");
 
             if (window.ethereum.selectedAddress === null) {

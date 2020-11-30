@@ -10,59 +10,53 @@ import GameSearch from "../views/GameSearch";
 import Profile from "../views/Profile";
 import Game from "../views/Game";
 import { pieceMoveToast, gameStartToast, checkmateToast } from "../utils/toast";
+import { checksumAddr } from "../utils/eth";
 
 export const PrivateRoutes = withRouter(
     class extends React.Component {
         async componentDidMount() {
-            const {
-                connectedWalletAddress,
-                match: {
-                    params: { gameId },
-                },
-            } = this.props;
+            const { connectedWalletAddress } = this.props;
 
-            if (!window.MovePieceSubscription) {
-                window.MovePieceSubscription = await Subscribe_PieceMove(
-                    { player: connectedWalletAddress },
-                    (err, e) => {
+            window.MovePieceSubscription = await Subscribe_PieceMove(
+                { otherPlayer: connectedWalletAddress },
+                (err, e) => {
+                    console.log(e);
+                    if (
+                        checksumAddr(e.returnValues.playerMakingMove) !==
+                        connectedWalletAddress
+                    ) {
                         pieceMoveToast(
                             e.returnValues.gameId,
-                            e.returnValues.playerMakingMove
+                            checksumAddr(e.returnValues.playerMakingMove)
                         );
                     }
-                );
-            }
-
-            if (!window.GameStartSubscription) {
-                window.GameStartSubscription = await Subscribe_GameStart(
-                    { address1: connectedWalletAddress },
-                    (err, e) =>
-                        gameStartToast(
-                            e.returnValues.gameId,
-                            e.returnValues.address2
-                        )
-                );
-            }
-
-            if (!window.CheckmateSubscription) {
-                window.CheckmateSubscription = await Subscribe_Checkmate(
-                    { loser: connectedWalletAddress },
-                    (err, e) =>
-                        checkmateToast(
-                            e.returnValues.gameId,
-                            e.returnValues.winner
-                        )
-                );
-            }
+                }
+            );
+            window.GameStartSubscription = await Subscribe_GameStart(
+                { address2: connectedWalletAddress },
+                (err, e) =>
+                    gameStartToast(
+                        e.returnValues.gameId,
+                        checksumAddr(e.returnValues.address2)
+                    )
+            );
+            window.CheckmateSubscription = await Subscribe_Checkmate(
+                { loser: connectedWalletAddress },
+                (err, e) =>
+                    checkmateToast(
+                        e.returnValues.gameId,
+                        checksumAddr(e.returnValues.winner)
+                    )
+            );
         }
 
         async componentWillUnmount() {
-            await window.MovePieceSubscription.unsubscribe();
-            window.MovePieceSubscription = undefined;
-            await window.GameStartSubscription.unsubscribe();
-            window.GameStartSubscription = undefined;
-            await window.CheckmateSubscription.unsubscribe();
-            window.CheckmateSubscription = undefined;
+            if (window.MovePieceSubscription)
+                await window.MovePieceSubscription.unsubscribe();
+            if (window.GameStartSubscription)
+                await window.GameStartSubscription.unsubscribe();
+            if (window.CheckmateSubscription)
+                await window.CheckmateSubscription.unsubscribe();
         }
 
         render() {

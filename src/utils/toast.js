@@ -10,7 +10,7 @@ export const viewGameToast = (gameId, msg, showLink) => {
     toast.info(<Component />, {
         className: "toast-container",
         position: "bottom-right",
-        autoClose: false,
+        autoClose: 10000,
     });
 };
 

@@ -1,7 +1,7 @@
 import React from "react";
 import Chessboard from "chessboardjsx";
 import { getGameByGameId, movePiece } from "../standardGame";
-import { getGameChessboard } from "../utils/chess";
+import { simulateMoves } from "../utils/chess";
 import { Card } from "rimble-ui";
 import { getAddressBlockie, getShortenedAddress } from "../utils/eth";
 import Chess from "chess.js";
@@ -14,12 +14,10 @@ class Game extends React.Component {
     constructor(props) {
         super(props);
 
+        this.chess = new Chess();
+
         this.state = {
             gameInfo: null,
-            chessboard: {
-                chess: new Chess(),
-                positions: {},
-            },
         };
     }
 
@@ -33,34 +31,37 @@ class Game extends React.Component {
             },
         } = this.props;
 
-        if (!window.MovePieceSubscriptionForGame) {
-            window.MovePieceSubscription = await Subscribe_PieceMove(
-                { player: connectedWalletAddress },
-                (err, e) => {
-                    getGameByGameId(connectedWalletAddress, gameId).then(
-                        (game) => {
-                            that.setState({
-                                gameInfo: game,
-                                chessboard: getGameChessboard(game.moveHistory),
-                            });
-                        }
-                    );
-                }
-            );
-        }
+        window.MovePieceSubscriptionForGame = await Subscribe_PieceMove(
+            { otherPlayer: connectedWalletAddress, gameId: gameId },
+            (err, e) => {
+                that.chess.move(e.returnValues.moveHistoryEntry, {
+                    sloppy: true,
+                });
+                getGameByGameId(connectedWalletAddress, gameId).then((game) => {
+                    that.setState({
+                        gameInfo: game,
+                    });
+                });
+            }
+        );
 
         getGameByGameId(connectedWalletAddress, gameId).then((game) => {
+            simulateMoves(that.chess, game.moveHistory);
+
             that.setState({
                 gameInfo: game,
-                chessboard: getGameChessboard(game.moveHistory),
             });
         });
+    }
+
+    async componentWillUnmount() {
+        await window.MovePieceSubscriptionForGame.unsubscribe();
+        window.MovePieceSubscriptionForGame = undefined;
     }
 
     onDrop = ({ sourceSquare, targetSquare }) => {
         const that = this;
 
-        const { chessboard } = this.state;
         const {
             connectedWalletAddress,
             match: {
@@ -68,7 +69,7 @@ class Game extends React.Component {
             },
         } = this.props;
 
-        let move = chessboard.chess.move({
+        let move = this.chess.move({
             from: sourceSquare,
             to: targetSquare,
             promotion: "q", // always promote to a queen for example simplicity
@@ -83,13 +84,18 @@ class Game extends React.Component {
                 sourceSquare,
                 targetSquare
             )
-                .then(() => getGameByGameId(connectedWalletAddress, gameId))
-                .then((game) => {
-                    console.log(game);
-                    that.setState({
-                        gameInfo: game,
-                        chessboard: getGameChessboard(game.moveHistory),
+                .then((tx) => {
+                    const { moveHistoryEntry } = tx.logs[0].args;
+                    that.chess.move(moveHistoryEntry, {
+                        sloppy: true,
                     });
+                    getGameByGameId(connectedWalletAddress, gameId).then(
+                        (game) => {
+                            that.setState({
+                                gameInfo: game,
+                            });
+                        }
+                    );
                 })
                 .catch((err) => {
                     console.log("Move failed:", err);
@@ -98,7 +104,8 @@ class Game extends React.Component {
     };
 
     render() {
-        const { gameInfo, chessboard } = this.state;
+        console.log(this.state.gameInfo);
+        const { gameInfo } = this.state;
         const { connectedWalletAddress } = this.props;
         return (
             <React.Fragment>
@@ -150,7 +157,7 @@ class Game extends React.Component {
                             <h3>{`It is ${gameInfo.currentTurn}'s turn.`}</h3>
                         ))}
                     <Chessboard
-                        position={chessboard.positions}
+                        position={this.chess.fen()}
                         onDrop={this.onDrop}
                     />
                 </div>
