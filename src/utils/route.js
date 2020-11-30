@@ -4,7 +4,7 @@ import {
     Subscribe_PieceMove,
     Subscribe_GameStart,
     Subscribe_Checkmate,
-} from "../hooks/events";
+} from "../events";
 import ActiveGames from "../views/ActiveGames";
 import GameSearch from "../views/GameSearch";
 import Profile from "../views/Profile";

@@ -1,8 +1,3 @@
-import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import { pieceMoveToast } from "../utils/toast";
-import { PLAYER_SIDE_MAPPING } from "../utils/game_parsing";
-
 export function Subscribe_PieceMove(filter, callback) {
     console.log("Subscribe_PieceMove");
     return window.cc_standardGameContract.deployed().then(async (instance) => {
