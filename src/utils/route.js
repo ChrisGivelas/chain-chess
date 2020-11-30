@@ -37,7 +37,7 @@ export const PrivateRoutes = withRouter(
                 (err, e) =>
                     gameStartToast(
                         e.returnValues.gameId,
-                        checksumAddr(e.returnValues.address2)
+                        checksumAddr(e.returnValues.address1)
                     )
             );
             window.CheckmateSubscription = await Subscribe_Checkmate(
