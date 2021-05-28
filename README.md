@@ -20,7 +20,7 @@ Before running make sure you have [node/npm](https://nodejs.org/en/) (tested wit
 
 This project was predominantly built on a windows machine, but was also tested on an ubuntu 20.04 VM. If you are running on windows, no changes to the code should be needed for this to work. If you are running on unix-based machines, change the file name of `truffle-config.js` to `truffle.js`.
 
-Begin by running npm install in the root of the project directory. This will pull all require dependencies for the frontend.
+Begin by running npm install in the root of the project directory. This will pull all required dependencies for the frontend.
 
 To start the project, first run `truffle develop` to start up the truffle development console. Run `migrate --reset` to compile and migrate the contract to your local chain started by truffle (alternatively, you can use `ganache-cli` to start up a development chain and migrate with `truffle migrate --reset`. Just make sure the port of your ganache instance matches 8545). Once done, you then run `npm start` to start up the webpack dev-server embedded within this create-react-app project.
 

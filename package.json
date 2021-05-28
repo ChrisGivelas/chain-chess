@@ -8,6 +8,7 @@
     "@testing-library/react": "^11.2.0",
     "@testing-library/user-event": "^12.2.2",
     "@truffle/contract": "^4.2.30",
+    "@truffle/hdwallet-provider": "^1.4.0",
     "chess.js": "^0.11.0",
     "chessboardjsx": "^2.4.2",
     "history": "^5.0.0",
